@@ -6,8 +6,8 @@ shows the verses with an English or Malay translation.
 - **Listen & sync** finds where the reciter is, highlights that ayah, and turns
   the microphone off. You move on through the verses yourself.
 - **Follow** keeps listening and moves the highlight from ayah to ayah as the
-  reciter goes. It checks every couple of seconds through short ayahs and up
-  to every 5 seconds in long ones.
+  reciter goes. It checks more often as the reciter nears the end of an ayah:
+  every 2 seconds then, and up to 5 seconds apart early in a long one.
 - **Read aloud** reads the translation in the device's own voice, a word
   highlighted at a time. It reads either through the surah on its own, or
   ayah by ayah along with the reciter while following.
@@ -109,9 +109,11 @@ without a match.
 1. Press **Follow** (or `F`). It searches the same way, but once it has found
    the reciter it keeps listening. The highlight moves to each new ayah as the
    reciter reaches it, and the page scrolls along with it.
-2. How often it checks depends on the ayah. In a short ayah it checks every
-   2 seconds. Early in a long one it waits up to 5 seconds, then checks more
-   often as the reciter nears the end. The footer counts down to the next
+2. How often it checks depends on how soon the reciter should finish the
+   ayah, at the pace they've been going. Near the end it checks every 2
+   seconds. With a long way to go it waits up to 5 seconds. So at a normal
+   pace, short ayahs get a check every 2 seconds, while a slow reciter gets
+   5-second waits even in short ones. The footer counts down to the next
    check: `following Yaseen 36:12 · next check in 3s`.
 3. When it hears the reciter finish an ayah, it moves on to the next one
    straight away, without waiting to hear it begin.
@@ -374,17 +376,25 @@ every distinct word.
    words count for more: each vote weighs log(total words ÷ occurrences of the
    word), so a word like "الله" barely counts. Votes are pooled over ±3 words,
    because recognition sometimes drops or adds a word. The 8 best distinct
-   starting points go on to the next step.
+   starting points go on to the next step. If `near` was sent, so do the 3
+   best that would carry on from it, closest first. Otherwise a passage that's
+   in many places, like Ar-Rahman's refrain, could fill all 8 with copies from
+   elsewhere.
 2. **Align word by word.** Each candidate is compared with the transcript using
    Smith–Waterman local alignment. An exact word scores +2. A similar spelling
    (Levenshtein similarity of 0.6 or more) earns partial credit, 2 × similarity
    − 0.4. Anything else scores −1, and a skipped word −0.8.
-3. **Accept or reject.** At least 3 words, and at least half the transcript,
-   have to line up. A match made only of Basmala words is rejected, since the
-   Basmala opens nearly every surah and says nothing about where you are.
-4. **Prefer your place.** If `near` was sent, alignments that end between 30
+3. **Prefer your place.** If `near` was sent, alignments that end between 30
    words before it and 400 words after it get a +2.5 bonus, and the match is
-   marked `continues`.
+   marked `continues`. The bonus shrinks by 0.002 for every word away from
+   `near` (at most 0.8, less than a word's worth), so of two identical copies,
+   the closer one wins.
+4. **Accept or reject.** At least 3 words, and at least half the transcript,
+   have to line up. Just after `near` (up to 20 words on), 2 words are enough:
+   a slow reciter often gets only two or three words into a clip, and the
+   speech model sometimes misspells one. A match made only of Basmala words is
+   rejected, since the Basmala opens nearly every surah and says nothing about
+   where you are.
 5. **Flag doubt.** If a different passage (further away than the transcript's
    length) scores within 2 points of the best, about one word's worth, the
    match is marked `ambiguous`.
@@ -507,9 +517,10 @@ how soon the reciter should finish the ayah on screen:
 - **Wait.** The next check is due when the reciter should have said the ayah's
   remaining words plus one more, at that pace. The extra word is there because
   the speech model only writes a word once it has heard all of it. The wait
-  is kept between the two settings, 2 and 5 seconds by default. So a short
-  ayah gets a check every 2 seconds, while early in a long ayah the checks are
-  5 seconds apart and get closer as the reciter nears its end.
+  is kept between the two settings, 2 and 5 seconds by default. So at a
+  normal pace a short ayah gets a check every 2 seconds, while early in a long
+  ayah the checks are 5 seconds apart and get closer as the reciter nears its
+  end.
 - **Searching** checks every second: before the reciter is found, and while
   what it heard could be more than one place.
 
@@ -522,9 +533,14 @@ how soon the reciter should finish the ayah on screen:
   below.
 - **A match further on** moves the highlight there, and updates the pace.
 - **A match elsewhere** that isn't ambiguous means the reciter jumped, so it
-  goes there. One that's ambiguous and doesn't continue from the last place is
-  ignored: a reciter repeating a phrase that also appears elsewhere is far more
-  likely than a jump.
+  goes there.
+- **An ambiguous match** (a phrase that's in more than one place) only counts
+  if it carries on from the last place and is within reach. That means it's
+  not behind the last place, and no further on than twice what the reciter's
+  pace covers in the time since, plus 6 words. Otherwise it's ignored: a
+  reciter going on to the next copy of a refrain is far more likely than one
+  skipping twenty ayahs. Without this, a misheard word once took Ar-Rahman
+  from 55:13 to the refrain at 55:34.
 - **No match.** Nothing moves. After 12 seconds without placing the reciter,
   the verses dim. After 60 seconds, it stops.
 
@@ -533,7 +549,66 @@ passage that carries on from it.
 
 ### How well it keeps up
 
-<!-- follow results -->
+Six recitations, 71 minutes in all, by six reciters, at paces from 0.34 to
+1.19 words a second:
+
+| Recitation                                   | Ayahs | Style            |
+| -------------------------------------------- | ----- | ---------------- |
+| Ya-Sin (36), Abdul Rahman Al-Sudais           | 83    | murattal         |
+| Al-Mulk (67), Muhammad Siddiq Al-Minshawi     | 30    | murattal         |
+| Ar-Rahman (55), Mahmoud Khalil Al-Husary      | 78    | slow murattal, with the refrain 31 times |
+| An-Naba (78), Abdul Basit Abdul Samad         | 40    | mujawwad (slow and melodic) |
+| Al-Baqarah 2:255–286, Mishary Alafasy         | 32    | murattal, long ayahs (up to 128 words) |
+| Al-Kahf 18:1–31, Saud Al-Shuraim              | 31    | fast murattal    |
+
+Each was transcribed the way the app would, from the 8 s clip ending at every
+half second. Then each way of timing the checks was replayed over those
+transcripts, scored against quran.com's per-word timings. A check was taken
+to need 0.8 s, as on the PC below; the second set of numbers assumes 2 s, like
+Home Assistant on 2 cores plus the trip from the phone.
+
+- **Right ayah** is the share of the recitation during which the highlight was
+  on the ayah being recited. Showing the next ayah once the last word has been
+  said also counts as right.
+- **Lag** is how long after the reciter starts an ayah the highlight gets
+  there. It's negative when the highlight moved first, in the pause between
+  ayahs.
+
+| How it checks                                  | Right ayah | Lag: median, 90% | Checks a minute | With 2 s checks |
+| ---------------------------------------------- | ---------- | ---------------- | --------------- | --------------- |
+| every 1 s                                      | 93.8%      | −0.6 s, 0.5 s    | 33              | 86.9%           |
+| every 3 s                                      | 89.5%      | 0.5 s, 2.3 s     | 16              | 79.4%           |
+| every 5 s                                      | 81.9%      | 1.5 s, 5.5 s     | 10.5            | 70.2%           |
+| by ayah length: a third of the ayah, 2–5 s     | 86.8%      | 0.8 s, 3.6 s     | 12.6            | 76.0%           |
+| **Follow**, 2–5 s (the default)                | **89.9%**  | 0.4 s, 2.4 s     | 11.4            | 80.2%           |
+| Follow, without moving on at the ayah's end    | 65.3%      | 4.5 s, 6.1 s     | 14.4            | 52.5%           |
+
+Follow gets within 4 points of checking every second, with a third of the
+checks. It's ahead of the reciter 0.6% of the time and behind 8.1%. The rest is
+the first few seconds, before it has found them. A shortest wait of 1 or 1.5 s,
+or a longest of 4 s, came out within half a point of 2–5 s; a longest of 6 s
+was 2 points worse.
+
+By recitation, with Follow's defaults:
+
+| Recitation               | Right ayah | With 2 s checks |
+| ------------------------ | ---------- | --------------- |
+| Al-Baqarah 2:255–286     | 96.9%      | 92.8%           |
+| Al-Mulk                  | 91.9%      | 79.5%           |
+| Ar-Rahman                | 90.6%      | 87.0%           |
+| Al-Kahf 18:1–31          | 87.2%      | 78.6%           |
+| An-Naba (mujawwad)       | 87.1%      | 76.4%           |
+| Ya-Sin                   | 85.6%      | 66.7%           |
+
+The fast reciters lose the most to slow checks, because they finish short ayahs
+in a couple of seconds. The rules for repeated passages and two-word matches
+came out of these tests. Before them, Follow was on the right ayah 81% of the
+time overall: 58% in Ar-Rahman, where the refrain kept sending it to other
+copies, and 69% in An-Naba.
+
+In the browser, with a recitation as a fake microphone, Follow found Ar-Rahman
+7.8 s after it was pressed. It then moved through 55:3 to 55:23, refrains
+included, in order. Ya-Sin went from 36:4 to 36:23 the same way.
 
 ## Reading the translation aloud
 
@@ -703,9 +778,10 @@ often can't open `.local` names.
   certificate survives restarts and updates, so each phone only accepts the
   warning once. The model downloads there the first time it's needed.
 - **Resources:** about 1.3 GB of RAM once the model is loaded, and about 1.3 s
-  per check on 2 CPU cores. **Follow** keeps those cores busy for a few seconds
-  in every five or so, for as long as it's on. In a Proxmox VM, set the CPU type
-  to `host`; the default type hides newer instructions such as AVX2.
+  per check on 2 CPU cores. **Follow** makes about 10 checks a minute, so it
+  keeps those cores busy about a fifth of the time, for as long as it's on. In a
+  Proxmox VM, set the CPU type to `host`; the default type hides newer
+  instructions such as AVX2.
 - **Voices:** reading aloud uses the voices of the phone or computer the page
   is open on, not the add-on.
 
@@ -861,6 +937,9 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   where the reciter was at the end of the last clip. When the reciter starts
   an ayah without the previous one's end being heard, the highlight gets
   there a couple of seconds late.
+- **A slow server falls further behind.** With checks taking 2 s (Home
+  Assistant on 2 cores), Follow was on the right ayah 80% of the time instead
+  of 90%, and 67% for Sudais's quick Ya-Sin.
 - **Reading aloud through a speaker** pauses Follow's checks while the voice
   speaks, so a fast reciter can get ahead and some ayahs go unread. Headphones
   with **keep listening while reading** avoid that.
