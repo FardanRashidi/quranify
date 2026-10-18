@@ -29,6 +29,8 @@ const SAMPLE = {
   ms: 'Dengan nama Allah, Yang Maha Pemurah, lagi Maha Mengasihani.',
 };
 
+const SUPPORT = 'https://buymeacoffee.com/vkfeks';
+
 const percent = (value) => `${value}%`;
 const seconds = (value) => `${value} s`;
 const NEXT_LISTEN = 'takes effect the next time you press Listen';
@@ -156,6 +158,10 @@ const SECTIONS = [
       { type: 'autoSearch', label: 'listen in the background', hint: 'with the screen off too, and send a notification for each surah it hears' },
       { type: 'tile', label: 'Quick Settings tile', hint: 'turns it on and off from the top of the screen. You can also add it by editing Quick Settings' },
     ],
+  },
+  {
+    title: 'support',
+    rows: [{ type: 'link', label: 'buy me a coffee', hint: 'Quran Whisperer is free. If it helps you, you can support it here', href: SUPPORT, text: '☕ support' }],
   },
 ];
 
@@ -373,6 +379,12 @@ const CONTROLS = {
     // Older Androids can only add it by editing Quick Settings, so the row goes.
     const update = () => autoSearch.status().then(({ canAddTile }) => (button.closest('.row').hidden = !canAddTile), (err) => console.warn(err));
     return { control: button, update };
+  },
+
+  // Opens in the browser, in the app too: Capacitor hands any page that isn't its own to the browser.
+  link({ href, text }, id) {
+    const link = Object.assign(document.createElement('a'), { id, href, target: '_blank', rel: 'noopener', className: 'button-link', textContent: text });
+    return { control: link };
   },
 
   // Filled in when the panel opens (see listMicrophones), since the list can change.

@@ -729,6 +729,25 @@ input[type='color']:disabled {
   color: var(--dim);
 }
 
+.button-link {
+  flex: none;
+  padding: 5px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.button-link:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.button-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .reset-all {
   width: 100%;
   margin-top: 20px;

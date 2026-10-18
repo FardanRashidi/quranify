@@ -54,6 +54,7 @@ music side, and runs on port 3001 so the two can run side by side.
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
 - [Credits and licences](#credits-and-licences)
+- [Support](#support)
 
 ## Quick start
 
@@ -306,6 +307,7 @@ bottom, Esc, Back, or a tap outside it.
 | reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation's language (English: **Ibrahim Walk (recorded)**, or any of the device's English voices), with a **try** button to hear it; keep listening while reading (off) |
 | listening     | audio source; which microphone (when there's more than one); how much audio each check sends (8 s); how long it listens without placing the reciter before giving up (60 s) |
 | auto search   | Android app only: listening in the background, on or off; **add** the Quick Settings tile (Android 13 and later). See [Auto search](#auto-search). |
+| support       | **☕ support** opens [buymeacoffee.com/vkfeks](https://buymeacoffee.com/vkfeks) in the browser |
 
 The footer's translation and **tajweed** controls and the speed button change
 the same settings, and the panel keeps up with them. Microphones only have
@@ -1261,9 +1263,17 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 - **Certificate warnings:** each device sees one, because the certificate is
   self-signed.
 - **Memory:** the speech model needs about 1.3 GB of RAM once loaded.
-- **iPhone:** the Capacitor project could get an iOS side too, but building it
-  needs a Mac with Xcode, and `Whisper.java`, `SpeechPlugin.java` and
-  `ScreenPlugin.java` would need Swift versions. The web page works in Safari.
+- **iPhone:** there's no iPhone app. The Capacitor project could get an iOS
+  side, but building it needs a Mac with Xcode, and `Whisper.java`,
+  `SpeechPlugin.java` and `ScreenPlugin.java` would need Swift versions. The
+  web page, with the speech-to-text done by the server, should work in Safari
+  but hasn't been tried there. Running the speech model in Safari itself, for
+  a web app that works offline, was tried on an iPhone (iOS 26.5): Safari
+  closed the page for using too much memory in nearly every run, even with
+  Tarteel's tiny model, and the one run that finished took 7.3 s a check
+  (following needs about 2 s). In Chrome on a PC the same page peaked at
+  1.3–1.9 GB: in WebAssembly, each of the 60-odd decoder steps in a check
+  copies the model's memory of the audio back into the runtime.
 
 ## Credits and licences
 
@@ -1293,3 +1303,9 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   MIT), in [Xenova's ONNX export](https://huggingface.co/Xenova/whisper-base.en):
   the word timings of the recorded voice, made once by
   `scripts/walk-timings.mjs`.
+
+## Support
+
+Quran Whisperer is free. If it helps you, you can support it at
+[buymeacoffee.com/vkfeks](https://buymeacoffee.com/vkfeks), which is also
+under **support** at the bottom of the settings.
