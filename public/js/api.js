@@ -33,6 +33,15 @@ export async function fetchSurah(number, translation) {
 /** The phone app restyles its status bar to suit the theme; a browser has nothing to do. */
 export function styleSystemBars(dark) {}
 
+/**
+ * Auto search (listening in the background, from a Quick Settings tile) is only
+ * in the Android app: see app/src/api.js.
+ */
+export const autoSearch = { supported: false };
+
+/** In the app, calls back with { surah, ayah } when it's opened from one of auto search's notifications. */
+export function onOpenAyah(callback) {}
+
 // The browser lets go of a wake lock by itself whenever the page is hidden, so
 // it's asked for again when the page is back.
 let screenOn = false;

@@ -7,6 +7,7 @@ import { loadModel, transcribe } from './asr.js';
 
 const quran = createQuran(cachedEdition);
 const Screen = registerPlugin('Screen');
+const AutoSearch = registerPlugin('AutoSearch');
 
 /** @param {number | null | undefined} near word index of the last match, to keep following from there */
 export async function recognizeQuran(pcm, near) {
@@ -38,6 +39,27 @@ export function keepScreenOn(on) {
   if (on === screenOn || !Capacitor.isNativePlatform()) return;
   screenOn = on;
   Screen.keepOn({ on }).catch((err) => console.warn(err));
+}
+
+/**
+ * Auto search (AutoSearchService.java): listens in the background, with the screen
+ * off too, and posts a notification for each surah it recognises. Its Quick
+ * Settings tile turns it on and off, and so can the settings panel.
+ */
+export const autoSearch = {
+  supported: Capacitor.isNativePlatform(),
+  /** @returns {Promise<{ running: boolean, canAddTile: boolean }>} */
+  status: () => AutoSearch.status(),
+  /** Asks for the microphone and notifications first, if it needs to. */
+  start: () => AutoSearch.start(),
+  stop: () => AutoSearch.stop(),
+  /** Android 13+ asks the user to add the tile. @returns {Promise<{ result: 'added' | 'already' | 'declined' | 'error' }>} */
+  addTile: () => AutoSearch.addTile(),
+};
+
+/** Calls back with { surah, ayah } when the app is opened from one of auto search's notifications. */
+export function onOpenAyah(callback) {
+  if (Capacitor.isNativePlatform()) AutoSearch.addListener('open', callback);
 }
 
 // The Quran text is downloaded once and kept in the app's storage, so it works offline.

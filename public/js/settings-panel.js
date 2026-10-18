@@ -5,6 +5,7 @@ import * as settings from './settings.js';
 import { arabicParagraph } from './verses-view.js';
 import * as speech from './speech.js';
 import { supported as canReadAloud, voiceFor, voicesFor } from './reader.js';
+import { autoSearch } from './api.js';
 
 // 51:21, "And in yourselves. Then will you not see?": short, with all five colours.
 const PREVIEW = [
@@ -34,8 +35,8 @@ const tajweedOn = () => settings.get('tajweed');
 const translated = (language) => () => canReadAloud && settings.get('translation') === language;
 
 /**
- * Each section's rows. `when` hides a row that doesn't apply here, and
- * `enabledWhen` greys out one that does nothing with the current settings.
+ * Each section's rows. `when` hides a row (or leaves out a section) that doesn't
+ * apply here, and `enabledWhen` greys out one that does nothing with the current settings.
  */
 const SECTIONS = [
   {
@@ -121,6 +122,14 @@ const SECTIONS = [
       { key: 'giveUpAfter', label: 'give up after', type: 'range', min: 20, max: 300, step: 10, format: seconds, hint: 'of listening without finding the ayah' },
     ],
   },
+  {
+    title: 'auto search',
+    when: () => autoSearch.supported,
+    rows: [
+      { type: 'autoSearch', label: 'listen in the background', hint: 'with the screen off too, and send a notification for each surah it hears' },
+      { type: 'tile', label: 'Quick Settings tile', hint: 'turns it on and off from the top of the screen. You can also add it by editing Quick Settings' },
+    ],
+  },
 ];
 
 let uid = 0;
@@ -133,7 +142,8 @@ export class SettingsPanel {
   constructor(dialog) {
     this.#dialog = dialog;
     const body = dialog.querySelector('.settings-body');
-    for (const { title, rows } of SECTIONS) {
+    for (const { title, rows, when } of SECTIONS) {
+      if (when && !when()) continue;
       const section = document.createElement('section');
       section.append(Object.assign(document.createElement('h3'), { textContent: title }));
       for (const spec of rows) {
@@ -303,6 +313,33 @@ const CONTROLS = {
       if (select.selectedIndex < 0) select.value = ''; // not on this device
     };
     return { control, update };
+  },
+
+  // Whether auto search is on. Its tile turns it on and off too, so this asks
+  // each time rather than keeping a setting.
+  autoSearch(spec, id) {
+    const input = switchInput(id);
+    const update = () => autoSearch.status().then(({ running }) => (input.checked = running), (err) => console.warn(err));
+    input.addEventListener('change', async () => {
+      await (input.checked ? autoSearch.start() : autoSearch.stop()).catch((err) => console.warn(err));
+      // Starting takes a moment, or doesn't happen at all if a permission is refused.
+      for (const ms of [500, 1500, 3500]) setTimeout(update, ms);
+    });
+    // back from a permission prompt, or from the tile
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && update());
+    return { control: input, update };
+  },
+
+  // Asks Android (13 and later) to add auto search's tile to Quick Settings.
+  tile(spec, id) {
+    const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'add' });
+    button.addEventListener('click', async () => {
+      const { result } = await autoSearch.addTile().catch(() => ({ result: 'error' }));
+      button.textContent = result === 'added' || result === 'already' ? 'added' : 'add';
+    });
+    // Older Androids can only add it by editing Quick Settings, so the row goes.
+    const update = () => autoSearch.status().then(({ canAddTile }) => (button.closest('.row').hidden = !canAddTile), (err) => console.warn(err));
+    return { control: button, update };
   },
 
   // Filled in when the panel opens (see listMicrophones), since the list can change.

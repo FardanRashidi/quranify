@@ -12,6 +12,9 @@ shows the verses with an English or Malay translation.
   highlighted at a time. It reads either through the surah on its own, or
   ayah by ayah along with the reciter while following.
 - The screen stays on while it's listening or reading.
+- **Auto search** (Android app): a Quick Settings tile that keeps listening in
+  the background, screen off too, like Auto Shazam, and sends a notification
+  for each surah it recognises.
 
 It runs as a small Node server on your computer (or on Home Assistant). Any
 phone, tablet or computer on your network opens it in the browser and uses its
@@ -35,6 +38,7 @@ music side, and runs on port 3001 so the two can run side by side.
 - [What leaves your machine](#what-leaves-your-machine)
 - [Home Assistant add-on](#home-assistant-add-on)
 - [Android app](#android-app)
+- [Auto search](#auto-search)
 - [Performance](#performance)
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
@@ -223,6 +227,7 @@ the browser, or in the app. Close it with ×, Esc, Back, or a tap outside it.
 | following     | scroll along to each ayah (on); the shortest wait between checks (2 s, from 1 to 5) and the longest (5 s, from 2 to 15) |
 | reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation's language, with a **try** button to hear it; keep listening while reading (off) |
 | listening     | audio source; which microphone (when there's more than one); how much audio each check sends (8 s); how long it listens without placing the reciter before giving up (60 s) |
+| auto search   | Android app only: listening in the background, on or off; **add** the Quick Settings tile (Android 13 and later). See [Auto search](#auto-search). |
 
 The footer's translation and **tajweed** controls and the speed button change
 the same settings, and the panel keeps up with them. Microphones only have
@@ -722,8 +727,9 @@ machine's hostname, `127.0.0.1` and every LAN IPv4 address, and saves it in
   settings if that matters to you.
 - **Always:** audio from a phone goes to your server over https on your own
   network. The Arabic font comes with the app.
-- **Android app:** the same downloads, made from the phone itself. Audio never
-  leaves the phone.
+- **Android app:** the same downloads, made from the phone itself (auto search
+  keeps its own copy of the Quran text). Audio never leaves the phone,
+  auto search's included.
 
 ## Home Assistant add-on
 
@@ -803,6 +809,8 @@ it installs beside the sound-finder app.
   (see [In the Android app](#in-the-android-app)).
 - **Screen on:** [`ScreenPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/ScreenPlugin.java)
   sets `FLAG_KEEP_SCREEN_ON` while it's listening or reading.
+- **Auto search:** listens in the background and sends a notification for each
+  surah it hears. See [Auto search](#auto-search).
 - **Microphone only:** phones can't capture another app's audio.
 - **Back button:** it closes the settings panel first, and leaves the app only
   when nothing is open ([`MainActivity.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/MainActivity.java)).
@@ -867,6 +875,117 @@ The first time you press Listen & sync or Follow, Android asks for the
 microphone. To debug the page, open `chrome://inspect` on the PC while the
 phone is plugged in.
 
+## Auto search
+
+The Android app can also listen in the background, with the screen off, and
+send a notification for each surah it recognises, the way Auto Shazam does for
+songs. Turn it on and off with its Quick Settings tile, or in the app under
+*settings → auto search*.
+
+### Adding the tile
+
+- **Android 13 and later:** *settings → auto search → Quick Settings tile →
+  add*, and Android asks whether to add it.
+- **Any version:** pull Quick Settings down, tap the pencil to edit, and drag
+  **Quran Finder** in.
+
+Under its name, the tile shows what it's doing: *Off*, *Downloading 40%*,
+*Listening*, or the last ayah it found, such as *Yaseen 36:13*.
+
+### What you get
+
+- **While it's on:** a quiet "Auto search is on" notification with a **Stop**
+  button, and Android's microphone dot in the status bar. Android requires
+  both for anything using the microphone in the background.
+- **When it recognises a surah:** a notification such as **Yaseen 36:13**, with
+  the surah's Arabic name. Tapping it opens the app at that ayah, and stops
+  the app's own listening if it was on.
+- **Then it keeps listening.** As the recitation goes on, that surah's
+  notification updates quietly to the latest ayah. If you dismiss it, it stays
+  dismissed. A different surah gets a new notification, with a sound. The same
+  surah counts as new again after 2 minutes without hearing it, so a dismissed
+  notification comes back.
+- **Only clear matches count**, as with Listen & sync. A passage found in
+  several places, like a refrain, doesn't notify until something only one
+  surah has is heard.
+- It runs until you stop it from the tile, the notification or the settings.
+  It doesn't start again by itself after a restart.
+
+### When it checks
+
+| When                    | Checks                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| Just turned on          | the first after 4 s                                                               |
+| Until it finds a surah  | every 3 s; every 10 s after 20 checks without a match (about a minute of sound that isn't a recitation) |
+| After finding one       | every 15 s, to keep up with the ayah and notice a new surah                       |
+| Quiet                   | a clip with less than 3 s of sound isn't transcribed; it looks again 2 s later    |
+
+Each check transcribes the last 8 s, the same work as one Listen & sync check.
+
+### Battery
+
+Auto Shazam matches a small audio fingerprint. Auto search runs the speech
+model at every check, which is much more work. Silence is cheap, since quiet
+clips aren't transcribed (the microphone and the wake lock still cost a
+little), and once it has found a surah it checks every 15 s. Searching through sound that isn't a recitation (talk, music, TV)
+is the expensive case: a check every 3 to 10 s for as long as that goes on. It
+also holds a partial wake lock, so it keeps working with the screen off. Turn
+it off when you don't need it. How much battery it uses on a real phone hasn't
+been measured yet.
+
+### How it works
+
+- **Starting it:** Android only lets an app use the microphone in the
+  background from a foreground service (type `microphone`) started while one
+  of the app's screens is showing. A Quick Settings tile doesn't count. So the
+  tile ([`AutoSearchTile.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/AutoSearchTile.java)) opens
+  [`AutoSearchActivity.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/AutoSearchActivity.java), a screen with nothing
+  on it. It asks for the microphone and notifications if it needs to, starts
+  the service, and closes once the service is running. All you see is Quick
+  Settings closing.
+- **Listening:** [`AutoSearchService.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/AutoSearchService.java) records
+  16 kHz mono with `AudioRecord` into a 12 s ring buffer. It uses the
+  `VOICE_RECOGNITION` input, which has no noise suppression or gain control,
+  like the page. The checks run on their own thread.
+- **Speech to text:** the same model as the app.
+  [`SpeechModel.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/SpeechModel.java) downloads and loads it once for
+  both the page and auto search, and runs one clip at a time.
+- **Finding the passage:** [`QuranSearch.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/QuranSearch.java) is a Java
+  port of `locate()` from [`lib/quran.js`](lib/quran.js). It needs no WebView,
+  so it works with the app closed. [`QuranText.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/QuranText.java)
+  downloads the Quran text for it once (1.5 MB). It was tested on 16,851
+  searches: the transcripts of 8,479 clips from six recitations, each searched
+  fresh and again from the place following would continue from. Every answer
+  matched the JavaScript's exactly, scores included. It builds its index in 0.2 s
+  and searches in 0.4 ms (on a PC).
+- **The page:** [`AutoSearchPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/AutoSearchPlugin.java) gives it
+  the switch, the **add** button, and an `open` event when the app is opened
+  from a notification.
+- **Permissions:** `RECORD_AUDIO`, `POST_NOTIFICATIONS` (Android 13 and later),
+  `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE` and `WAKE_LOCK`.
+
+### Tested
+
+On the Android 16 emulator, debug builds can play a recording in place of the
+microphone. They play `test-recitation.pcm` (16 kHz mono s16le) from the app's
+files folder; release builds ignore it. With 60 s of Al-Mulk (Minshawi)
+followed by Ya-Sin (Sudais):
+
+- **Al-Mulk 67:1** was notified 9 s after tapping the tile, then updated to
+  67:2, 67:3 and 67:5 as it went on.
+- **Ya-Sin**, which started at 60 s, got its own notification at 85 s (36:5),
+  then went on to 36:8, 36:9, 36:11 and 36:13.
+- **With the screen off**, it found and updated Al-Mulk the same way, with the
+  wake lock held.
+- **Tapping a notification** opened the app at that ayah, both when the app was
+  closed and when it was open on another surah.
+- **Stopping** from the tile, the notification's Stop, and the app all worked,
+  and the tile then showed *Off*. Turning it on from the settings switch did
+  too. Refusing the microphone showed a message and started nothing.
+- **With the real microphone**, Android reported the recording as not
+  silenced, with the screen on and off. The emulator's microphone only gives
+  silence, so recognition through a real microphone in a room is untested.
+
 ## Performance
 
 Measured on a Ryzen 7 5800X3D unless noted.
@@ -908,14 +1027,21 @@ public/
   js/api.js              backend calls and the screen wake lock (the app swaps in app/src/api.js)
 app/              Android app: the same page, with the server's work done on the phone
   build.mjs       npm run app → app/www/ (public/ + bundled app/src/)
-  src/api.js      public/js/api.js's functions, run locally (plus status bar style and keeping the screen on)
+  src/api.js      public/js/api.js's functions, run locally (plus status bar style, keeping the screen on, auto search)
   src/asr.js      speech-to-text, through WhisperPlugin
   src/speech.js   public/js/speech.js's functions, through SpeechPlugin
   android/        Capacitor's Android project; in app/src/main/java/…/quranfinder/:
     Whisper.java        the speech model, with ONNX Runtime
-    WhisperPlugin.java  downloads the model, takes calls from the page
+    SpeechModel.java    downloads and loads the model, one clip at a time (for the page and auto search)
+    WhisperPlugin.java  speech to text for the page
     SpeechPlugin.java   Android text-to-speech: voices, speak, stop, word events
     ScreenPlugin.java   keeps the screen on
+    AutoSearchService.java   auto search: background listening, checks, notifications
+    AutoSearchTile.java      its Quick Settings tile
+    AutoSearchActivity.java  starts it from a screen (permissions, and Android's microphone rule)
+    AutoSearchPlugin.java    on/off, status and the tile for the page; opening from a notification
+    QuranSearch.java         lib/quran.js's locate() in Java, for auto search
+    QuranText.java           downloads and keeps the Quran text for QuranSearch
     MainActivity.java   registers the plugins, sends Back to the page first
 capacitor.config.json  app id and where the Android project lives
 homeassistant/
@@ -948,6 +1074,9 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 - **You can't open a surah by hand.** Reading aloud and the ayah buttons work
   on the surah a recitation found.
 - **Tab audio** only works in Chromium-based browsers.
+- **Auto search** is only in the Android app (a web page can't keep listening
+  in the background). It hasn't been tried with a real microphone in a room,
+  and its battery use on a real phone hasn't been measured.
 - **Certificate warnings:** each device sees one, because the certificate is
   self-signed.
 - **Memory:** the speech model needs about 1.3 GB of RAM once loaded.

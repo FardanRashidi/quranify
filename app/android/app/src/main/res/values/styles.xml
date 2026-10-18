@@ -18,6 +18,11 @@
     </style>
 
 
+    <!-- AutoSearchActivity: shows nothing, while it asks for permissions and starts auto search -->
+    <style name="AppTheme.Invisible" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
     </style>

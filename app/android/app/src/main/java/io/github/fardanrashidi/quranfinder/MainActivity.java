@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(WhisperPlugin.class);
         registerPlugin(SpeechPlugin.class);
         registerPlugin(ScreenPlugin.class);
+        registerPlugin(AutoSearchPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Back goes back in the page's history first (an open settings panel is a

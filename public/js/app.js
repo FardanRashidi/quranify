@@ -662,6 +662,12 @@ els.ayahUp.addEventListener('click', () => step(1));
 versesView.onSelect = (index) => {
   if (state.surah?.verses) goTo(index + 1, false);
 };
+// The app opened from one of auto search's notifications: show what it heard.
+api.onOpenAyah(({ surah, ayah }) => {
+  if (listener.active) stop();
+  if (state.surah?.number === surah && state.surah.verses) goTo(ayah, true);
+  else showSurah(surah, ayah);
+});
 
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey || settingsPanel.open || e.target.closest('select, input')) return;
