@@ -582,6 +582,14 @@ body:not(.tajweed) .tajweed-key,
   color: var(--dim);
 }
 
+.settings .credits {
+  font-size: 11px;
+}
+
+.settings .credits a {
+  color: var(--accent);
+}
+
 .settings .preview {
   margin: 10px 0 4px;
   padding: 4px 10px;

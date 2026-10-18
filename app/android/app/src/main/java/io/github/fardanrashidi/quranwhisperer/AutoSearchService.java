@@ -1,4 +1,4 @@
-package io.github.fardanrashidi.quranfinder;
+package io.github.fardanrashidi.quranwhisperer;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
@@ -38,7 +38,7 @@ import java.util.Arrays;
  */
 public class AutoSearchService extends Service {
 
-    static final String ACTION_STOP = "io.github.fardanrashidi.quranfinder.STOP_AUTO_SEARCH";
+    static final String ACTION_STOP = "io.github.fardanrashidi.quranwhisperer.STOP_AUTO_SEARCH";
     static final String EXTRA_SURAH = "surah", EXTRA_AYAH = "ayah";
 
     private static final String TAG = "AutoSearch";
@@ -105,7 +105,7 @@ public class AutoSearchService extends Service {
         if (checker != null) return START_NOT_STICKY; // already listening
         running = true;
         setStatus("Getting ready");
-        wakeLock = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "quranfinder:auto-search");
+        wakeLock = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "quranwhisperer:auto-search");
         wakeLock.acquire();
         checker = new Thread(this::run, "auto-search");
         checker.start();

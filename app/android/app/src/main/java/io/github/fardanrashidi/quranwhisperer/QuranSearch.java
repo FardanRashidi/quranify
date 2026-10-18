@@ -1,4 +1,4 @@
-package io.github.fardanrashidi.quranfinder;
+package io.github.fardanrashidi.quranwhisperer;
 
 import java.util.ArrayList;
 import java.util.Arrays;

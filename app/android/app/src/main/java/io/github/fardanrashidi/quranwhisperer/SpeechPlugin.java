@@ -1,4 +1,4 @@
-package io.github.fardanrashidi.quranfinder;
+package io.github.fardanrashidi.quranwhisperer;
 
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;

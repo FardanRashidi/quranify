@@ -29,7 +29,17 @@ const SAMPLE = {
   ms: 'Dengan nama Allah, Yang Maha Pemurah, lagi Maha Mengasihani.',
 };
 
-const SUPPORT = 'https://buymeacoffee.com/vkfeks';
+const GITHUB = 'https://github.com/FardanRashidi';
+
+// Where the text, translations, voice and model come from, as their terms ask
+// (Tanzil's: name it and link to tanzil.net). Links are [text, href].
+const CREDITS = [
+  'Quran text from ',
+  ['Tanzil', 'https://tanzil.net'],
+  ' and the King Fahd Complex (KFGQPC), whose font this is. Translations: Saheeh International (English) and Abdullah Muhammad Basmeih (Malay), through ',
+  ['alquran.cloud', 'https://alquran.cloud'],
+  '. Recorded English voice: Ibrahim Walk. Speech model: Tarteel’s whisper-base-ar-quran (Apache-2.0).',
+];
 
 const percent = (value) => `${value}%`;
 const seconds = (value) => `${value} s`;
@@ -160,8 +170,11 @@ const SECTIONS = [
     ],
   },
   {
-    title: 'support',
-    rows: [{ type: 'link', label: 'buy me a coffee', hint: 'Quran Whisperer is free. If it helps you, you can support it here', href: SUPPORT, text: '☕ support' }],
+    title: 'about',
+    rows: [
+      { type: 'link', label: 'made by FardanRashidi', hint: 'on GitHub', href: GITHUB, text: 'GitHub ↗' },
+      { type: 'credits' },
+    ],
   },
 ];
 
@@ -236,6 +249,11 @@ function build(spec) {
     return { row };
   }
   if (spec.type === 'note') return { row: Object.assign(document.createElement('p'), { className: 'note', textContent: spec.text }) };
+  if (spec.type === 'credits') {
+    const row = Object.assign(document.createElement('p'), { className: 'note credits' });
+    row.append(...CREDITS.map((part) => (typeof part === 'string' ? part : Object.assign(document.createElement('a'), { href: part[1], target: '_blank', rel: 'noopener', textContent: part[0] }))));
+    return { row };
+  }
 
   const id = `setting-${++uid}`;
   const row = document.createElement('div');

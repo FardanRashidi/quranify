@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">Quran Whisperer</string>
     <string name="title_activity_main">Quran Whisperer</string>
-    <string name="package_name">io.github.fardanrashidi.quranfinder</string>
-    <string name="custom_url_scheme">io.github.fardanrashidi.quranfinder</string>
+    <string name="package_name">io.github.fardanrashidi.quranwhisperer</string>
+    <string name="custom_url_scheme">io.github.fardanrashidi.quranwhisperer</string>
     <!-- The Quick Settings tile for auto search (AutoSearchTile.java) -->
     <string name="auto_search_tile">Quran Whisperer</string>
 </resources>

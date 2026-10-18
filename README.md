@@ -307,7 +307,7 @@ bottom, Esc, Back, or a tap outside it.
 | reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation's language (English: **Ibrahim Walk (recorded)**, or any of the device's English voices), with a **try** button to hear it; keep listening while reading (off) |
 | listening     | audio source; which microphone (when there's more than one); how much audio each check sends (8 s); how long it listens without placing the reciter before giving up (60 s) |
 | auto search   | Android app only: listening in the background, on or off; **add** the Quick Settings tile (Android 13 and later). See [Auto search](#auto-search). |
-| support       | **☕ support** opens [buymeacoffee.com/vkfeks](https://buymeacoffee.com/vkfeks) in the browser |
+| about         | a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, translations, recorded voice and speech model |
 
 The footer's translation and **tajweed** controls and the speed button change
 the same settings, and the panel keeps up with them. Microphones only have
@@ -817,7 +817,7 @@ The voice setting's value for it is `ibrahim-walk` (`RECORDED` in
 
 Android's WebView has no `speechSynthesis`. So the app swaps in
 [`app/src/speech.js`](app/src/speech.js), which has the same functions but
-calls [`SpeechPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/SpeechPlugin.java),
+calls [`SpeechPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/SpeechPlugin.java),
 built on Android's `TextToSpeech`:
 
 - `voices` lists the installed voices of the phone's speech engine (usually
@@ -963,25 +963,25 @@ often can't open `.local` names.
 
 [`app/`](app/) packages the same page as an Android app with
 [Capacitor](https://capacitorjs.com). It needs no server: the work the server
-does happens on the phone. Its id is `io.github.fardanrashidi.quranfinder`, so
+does happens on the phone. Its id is `io.github.fardanrashidi.quranwhisperer`, so
 it installs beside the sound-finder app.
 
 - **Speech to text:** the same speech model runs on the phone, in native code
   with ONNX Runtime
-  ([`Whisper.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/Whisper.java)).
+  ([`Whisper.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/Whisper.java)).
   It downloads from Hugging Face the first time (164 MB, with progress shown),
   then works offline. So does the Quran text, which is kept after the first
   download.
 - **Reading aloud:** Android's own text-to-speech, through
-  [`SpeechPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/SpeechPlugin.java)
+  [`SpeechPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/SpeechPlugin.java)
   (see [In the Android app](#in-the-android-app)).
-- **Screen on:** [`ScreenPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/ScreenPlugin.java)
+- **Screen on:** [`ScreenPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/ScreenPlugin.java)
   sets `FLAG_KEEP_SCREEN_ON` while it's listening or reading.
 - **Auto search:** listens in the background and sends a notification for each
   surah it hears. See [Auto search](#auto-search).
 - **Microphone only:** phones can't capture another app's audio.
 - **Back button:** it closes the settings panel first, and leaves the app only
-  when nothing is open ([`MainActivity.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/MainActivity.java)).
+  when nothing is open ([`MainActivity.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/MainActivity.java)).
   The status bar's icons switch between light and dark with the theme.
 
 On the Android emulator, with the eSpeak NG engine, the speech plugin listed
@@ -1106,27 +1106,27 @@ been measured yet.
 - **Starting it:** Android only lets an app use the microphone in the
   background from a foreground service (type `microphone`) started while one
   of the app's screens is showing. A Quick Settings tile doesn't count. So the
-  tile ([`AutoSearchTile.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/AutoSearchTile.java)) opens
-  [`AutoSearchActivity.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/AutoSearchActivity.java), a screen with nothing
+  tile ([`AutoSearchTile.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/AutoSearchTile.java)) opens
+  [`AutoSearchActivity.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/AutoSearchActivity.java), a screen with nothing
   on it. It asks for the microphone and notifications if it needs to, starts
   the service, and closes once the service is running. All you see is Quick
   Settings closing.
-- **Listening:** [`AutoSearchService.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/AutoSearchService.java) records
+- **Listening:** [`AutoSearchService.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/AutoSearchService.java) records
   16 kHz mono with `AudioRecord` into a 12 s ring buffer. It uses the
   `VOICE_RECOGNITION` input, which has no noise suppression or gain control,
   like the page. The checks run on their own thread.
 - **Speech to text:** the same model as the app.
-  [`SpeechModel.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/SpeechModel.java) downloads and loads it once for
+  [`SpeechModel.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/SpeechModel.java) downloads and loads it once for
   both the page and auto search, and runs one clip at a time.
-- **Finding the passage:** [`QuranSearch.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/QuranSearch.java) is a Java
+- **Finding the passage:** [`QuranSearch.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/QuranSearch.java) is a Java
   port of `locate()` from [`lib/quran.js`](lib/quran.js). It needs no WebView,
-  so it works with the app closed. [`QuranText.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/QuranText.java)
+  so it works with the app closed. [`QuranText.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/QuranText.java)
   downloads the Quran text for it once (1.5 MB). It was tested on 16,851
   searches: the transcripts of 8,479 clips from six recitations, each searched
   fresh and again from the place following would continue from. Every answer
   matched the JavaScript's exactly, scores included. It builds its index in 0.2 s
   and searches in 0.4 ms (on a PC).
-- **The page:** [`AutoSearchPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/AutoSearchPlugin.java) gives it
+- **The page:** [`AutoSearchPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/AutoSearchPlugin.java) gives it
   the switch, the **add** button, and an `open` event when the app is opened
   from a notification.
 - **Permissions:** `RECORD_AUDIO`, `POST_NOTIFICATIONS` (Android 13 and later),
@@ -1202,7 +1202,7 @@ app/              Android app: the same page, with the server's work done on the
   src/api.js      public/js/api.js's functions, run locally (plus status bar style, keeping the screen on, auto search)
   src/asr.js      speech-to-text, through WhisperPlugin
   src/speech.js   public/js/speech.js's functions, through SpeechPlugin
-  android/        Capacitor's Android project; in app/src/main/java/…/quranfinder/:
+  android/        Capacitor's Android project; in app/src/main/java/…/quranwhisperer/:
     Whisper.java        the speech model, with ONNX Runtime
     SpeechModel.java    downloads and loads the model, one clip at a time (for the page and auto search)
     WhisperPlugin.java  speech to text for the page
@@ -1249,9 +1249,19 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   marked. The recorded voice's highlight comes from a speech model's timings,
   so now and then a word is marked a little early or late.
 - **The recorded voice needs the internet**, and it's English only: there's
-  no recording of the Malay translation. Its terms of use haven't been
-  checked. alquran.cloud offers it through its public API, but the recording
-  itself may have its own licence, so check before publishing the app.
+  no recording of the Malay translation.
+- **The recorded voice's rights:** no source found says who owns the
+  recording (it's also sold as an Audible audiobook). alquran.cloud, whose CDN
+  the app plays it from, says in its
+  [terms](https://alquran.cloud/terms-and-conditions) that its recitations are
+  licensed to it by the reciters or their estates for free, non-commercial
+  redistribution, that copyright stays with the reciters, and that they may
+  ask for a recording to be taken down. The app is free, has no ads, streams
+  the files rather than packing them in, and credits Ibrahim Walk under
+  settings → about, which fits those terms. If the files ever went, each ayah
+  would fall back to the device's voice. The Saheeh International translation
+  it reads is offered by [Tanzil](https://tanzil.net/trans/) for
+  non-commercial use only; other use needs the publisher's permission.
 - **The recorded voice on an iPhone is untested.** The silent-tap trick is
   there for Safari, but it's only been tried in Chrome and the Android
   emulator's WebView.
@@ -1283,8 +1293,9 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 - [transformers.js](https://github.com/huggingface/transformers.js) and
   onnxruntime: running the model in Node and on the phone.
 - [Capacitor](https://capacitorjs.com): the Android app.
-- [alquran.cloud](https://alquran.cloud): Quran text (from Tanzil), the
-  tajweed-marked text, and translations.
+- [alquran.cloud](https://alquran.cloud): Quran text (from
+  [Tanzil](https://tanzil.net), whose terms ask that it be named with a link,
+  as settings → about does), the tajweed-marked text, and translations.
 - [King Fahd Glorious Quran Printing Complex](https://qurancomplex.gov.sa)
   (KFGQPC): the Uthmani text shown, and the font KFGQPC Uthmanic Script Hafs
   (version 0.18, as `public/fonts/UthmanicHafs1Ver18.woff2`). The font's
@@ -1307,5 +1318,7 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 ## Support
 
 Quran Whisperer is free. If it helps you, you can support it at
-[buymeacoffee.com/vkfeks](https://buymeacoffee.com/vkfeks), which is also
-under **support** at the bottom of the settings.
+[buymeacoffee.com/vkfeks](https://buymeacoffee.com/vkfeks). The app itself
+only links to [GitHub](https://github.com/FardanRashidi) (settings → about):
+Google Play doesn't let an app link to payments outside Play, except tax-exempt
+donations.
