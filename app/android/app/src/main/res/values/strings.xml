@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">quran-finder</string>
+    <string name="title_activity_main">quran-finder</string>
+    <string name="package_name">io.github.fardanrashidi.quranfinder</string>
+    <string name="custom_url_scheme">io.github.fardanrashidi.quranfinder</string>
+</resources>

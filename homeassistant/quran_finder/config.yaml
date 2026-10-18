@@ -1,0 +1,18 @@
+name: Quran Finder
+version: "1.0.0"
+slug: quran_finder
+description: Find the surah and ayah of a Quran recitation, follow the reciter, and hear the translation read aloud.
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+# Host networking so the certificate covers Home Assistant's own IP and the
+# app is reachable on it directly (phones need https for the microphone).
+# Port 3001, so it can run beside the Sound Finder add-on on 3000.
+host_network: true
+webui: https://[HOST]:[PORT:3001]
+ports:
+  3001/tcp: 3001
+ports_description:
+  3001/tcp: Web app (https)

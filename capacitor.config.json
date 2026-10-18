@@ -1,0 +1,14 @@
+{
+  "appId": "io.github.fardanrashidi.quranfinder",
+  "appName": "quran-finder",
+  "webDir": "app/www",
+  "backgroundColor": "#0b0e12",
+  "android": {
+    "path": "app/android"
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "DARK"
+    }
+  }
+}

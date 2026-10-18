@@ -1,0 +1,52 @@
+// The phone app's stand-in for public/js/api.js: the same functions, but
+// everything the server does happens here instead. The Quran speech model runs
+// on the phone, and the Quran text is downloaded once and kept.
+import { Capacitor, SystemBars, SystemBarsStyle, registerPlugin } from '@capacitor/core';
+import { createQuran, downloadEdition } from '../../lib/quran.js';
+import { loadModel, transcribe } from './asr.js';
+
+const quran = createQuran(cachedEdition);
+const Screen = registerPlugin('Screen');
+
+/** @param {number | null | undefined} near word index of the last match, to keep following from there */
+export async function recognizeQuran(pcm, near) {
+  return quran.locate(await transcribe(pcm), near ?? null);
+}
+
+/**
+ * Resolves once the speech model is loaded (a one-time download the first time).
+ * @param {(progress: { loaded: number, total: number }) => void} [onProgress] bytes so far
+ */
+export async function warmUpQuran(onProgress) {
+  await Promise.all([loadModel(onProgress), quran.warmUp()]);
+}
+
+export function fetchSurah(number, translation) {
+  return quran.getSurah(number, translation);
+}
+
+/** Light status bar icons on the dark theme, dark ones on the light theme. */
+export function styleSystemBars(dark) {
+  if (!Capacitor.isNativePlatform()) return;
+  SystemBars.setStyle({ style: dark ? SystemBarsStyle.Dark : SystemBarsStyle.Light }).catch((err) => console.warn(err));
+}
+
+let screenOn = null;
+
+/** Keeps the screen from going to sleep (ScreenPlugin.java: the WebView has no wake lock), or lets it again. */
+export function keepScreenOn(on) {
+  if (on === screenOn || !Capacitor.isNativePlatform()) return;
+  screenOn = on;
+  Screen.keepOn({ on }).catch((err) => console.warn(err));
+}
+
+// The Quran text is downloaded once and kept in the app's storage, so it works offline.
+async function cachedEdition(id) {
+  const cache = await caches.open('quran-text');
+  const key = `/quran/${id}.json`;
+  const hit = await cache.match(key);
+  if (hit) return hit.json();
+  const surahs = await downloadEdition(id);
+  await cache.put(key, new Response(JSON.stringify(surahs), { headers: { 'Content-Type': 'application/json' } }));
+  return surahs;
+}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0e12" />
+    <title>quran-finder</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>۞</text></svg>"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body data-status="idle">
+    <header class="topbar">
+      <div class="brand"><span class="dot" aria-hidden="true"></span>quran-finder</div>
+      <pre class="meter" id="meter" aria-hidden="true"></pre>
+      <div class="controls">
+        <select id="source" aria-label="Audio source">
+          <option value="mic">Microphone</option>
+          <option value="tab">Tab / system audio</option>
+        </select>
+        <button id="open-settings" class="icon" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" />
+            <circle cx="16" cy="6" r="2" />
+            <circle cx="10" cy="12" r="2" />
+            <circle cx="18" cy="18" r="2" />
+          </svg>
+        </button>
+        <button id="follow" aria-pressed="false" title="Keep listening, and follow the reciter from ayah to ayah  ( F )">Follow</button>
+        <button id="listen" class="primary" title="Listen until it finds the ayah  ( space )">Listen &amp; sync</button>
+      </div>
+    </header>
+
+    <section class="now-playing" id="now-playing" hidden>
+      <div id="glyph" class="glyph" aria-hidden="true"></div>
+      <div class="meta">
+        <h1 id="title"></h1>
+        <p id="subtitle"></p>
+        <p id="details" class="dim"></p>
+        <div class="progress">
+          <span id="elapsed"></span>
+          <div class="bar"><div id="bar-fill"></div></div>
+          <span id="duration"></span>
+        </div>
+      </div>
+      <div class="reader" id="reader" hidden>
+        <button id="read" aria-pressed="false" aria-label="Read the translation aloud" title="Read the translation aloud  ( T )">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" />
+            <path class="wave" d="M15.5 9a4.5 4.5 0 0 1 0 6" />
+            <path class="wave" d="M18.5 6a8.5 8.5 0 0 1 0 12" />
+          </svg>
+          <span class="label">read aloud</span>
+        </button>
+        <button id="read-speed" title="Reading speed">1×</button>
+      </div>
+    </section>
+
+    <main class="verses" id="verses"></main>
+
+    <footer class="statusbar">
+      <span id="status" role="status"></span>
+      <span class="setting">
+        <span class="dim">ayah</span>
+        <output id="ayah">–</output>
+        <button id="ayah-down" title="Previous ayah  ( [ or ← )">−</button>
+        <button id="ayah-up" title="Next ayah  ( ] or → )">+</button>
+        <button id="ayah-sync" title="Listen until it finds the ayah again  ( S )">sync</button>
+      </span>
+      <span class="setting">
+        <label class="setting">
+          <span class="dim">translation</span>
+          <select id="translation">
+            <option value="en">English</option>
+            <option value="ms">Melayu</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+        <button id="tajweed" aria-pressed="true" title="Tajweed colours and waqf signs">tajweed</button>
+      </span>
+    </footer>
+
+    <!-- Filled in by settings-panel.js -->
+    <dialog id="settings" class="settings" aria-labelledby="settings-title">
+      <header>
+        <h2 id="settings-title">settings</h2>
+        <button type="button" class="close" aria-label="Close settings">×</button>
+      </header>
+      <div class="settings-body"></div>
+    </dialog>
+  </body>
+</html>

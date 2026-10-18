@@ -1,0 +1,810 @@
+/* The King Fahd Complex's font for its text of the Madinah mushaf (see README for its licence) */
+@font-face {
+  font-family: 'KFGQPC Hafs';
+  src: url('fonts/UthmanicHafs1Ver18.woff2') format('woff2');
+  font-display: swap;
+}
+
+/* The theme: dark, or light under [data-theme='light'] (app.js sets it from the
+   settings). --theme-* are the theme's own colours; app.js overrides --accent and
+   the --tj-* colours when the user picks their own. */
+:root {
+  --bg: #0b0e12;
+  --panel: #12171d;
+  --border: #1f2731;
+  --text: #e6edf3;
+  --dim: #7d8896;
+  --faint: #2c3540;
+  --theme-accent: #7ee0a1;
+  --on-accent: #0b0e12; /* text on the accent colour */
+  /* Tajweed colours, in the scheme Malaysian coloured mushafs use */
+  --theme-tj-madd: #ff6b6b;
+  --theme-tj-qalqalah: #55b4ff;
+  --theme-tj-ghunnah: #4fd68a;
+  --theme-tj-ra: #c592ff;
+  --theme-tj-waqf: #f2b84b;
+  color-scheme: dark;
+
+  --accent: var(--theme-accent);
+  --tj-madd: var(--theme-tj-madd);
+  --tj-qalqalah: var(--theme-tj-qalqalah);
+  --tj-ghunnah: var(--theme-tj-ghunnah);
+  --tj-ra: var(--theme-tj-ra);
+  --tj-waqf: var(--theme-tj-waqf);
+  /* Text sizes, from the settings */
+  --arabic-scale: 1;
+  --translation-scale: 1;
+  --font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --arabic: 'KFGQPC Hafs', 'Noto Naskh Arabic', serif;
+}
+
+:root[data-theme='light'] {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --border: #d6dbe1;
+  --text: #1a1f26;
+  --dim: #5f6b78;
+  --faint: #c8cfd7;
+  --theme-accent: #1a8a52;
+  --on-accent: #ffffff;
+  --theme-tj-madd: #d32f2f;
+  --theme-tj-qalqalah: #1565c0;
+  --theme-tj-ghunnah: #188a3e;
+  --theme-tj-ra: #7b3fc4;
+  --theme-tj-waqf: #b8650b;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 var(--font);
+}
+
+button,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+button:hover,
+select:hover {
+  border-color: var(--dim);
+}
+
+button.icon {
+  display: grid;
+  place-items: center;
+  padding: 5px 8px;
+}
+
+button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  /* As wide as its longest label, so switching to Stop doesn't reflow the top bar */
+  min-width: calc(13ch + 26px);
+}
+
+select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+/* --- top bar --- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  /* In the app the page runs under the phone's status bar */
+  padding-top: max(12px, calc(env(safe-area-inset-top) + 8px));
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+[data-status='searching'] .dot {
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+[data-status='following'] .dot {
+  background: var(--accent);
+}
+
+.meter {
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  text-align: center;
+  color: var(--accent);
+  opacity: 0.75;
+  font: inherit;
+  letter-spacing: 1px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* --- now playing --- */
+
+.now-playing {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 18px 20px 8px;
+}
+
+.glyph {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--accent);
+  font: 700 34px/1 var(--font);
+}
+
+.meta {
+  min-width: 0;
+}
+
+.meta h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.meta p {
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--dim);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--faint);
+  overflow: hidden;
+}
+
+#bar-fill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+}
+
+/* Reading the translation aloud, where a player's play button would be */
+.reader {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+#read {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+}
+
+#read-speed {
+  padding: 1px 8px;
+  color: var(--dim);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+#read .wave {
+  opacity: 0.35;
+}
+
+#read.speaking .wave {
+  opacity: 1;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+#read.speaking .wave + .wave {
+  animation-delay: 0.3s;
+}
+
+/* --- verses --- */
+
+.verses {
+  position: relative; /* verses' offsetTop is measured against this */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 max(20px, calc(50% - 380px));
+  mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);
+  scrollbar-width: none;
+  transition: opacity 0.4s;
+}
+
+/* Room above the first verse and below the last, so either can scroll to the middle. */
+.verses::before,
+.verses::after {
+  content: '';
+  display: block;
+  height: 42%;
+}
+
+.verses::-webkit-scrollbar {
+  display: none;
+}
+
+.stale .verses {
+  opacity: 0.4;
+}
+
+.message {
+  margin: 0;
+  text-align: center;
+  color: var(--dim);
+  font-size: 1.05rem;
+}
+
+.verse {
+  position: relative;
+  margin: 0;
+  padding: 0.9em 0;
+  font-size: clamp(1.05rem, 2.4vw, 1.55rem);
+  line-height: 1.35;
+  text-align: center;
+  color: var(--dim);
+  opacity: 0.6;
+  cursor: pointer;
+  transition:
+    color 0.3s,
+    opacity 0.3s;
+}
+
+.verse.past {
+  opacity: 0.3;
+}
+
+.verse.current,
+.verse.reading {
+  color: var(--text);
+  opacity: 1;
+}
+
+.verse .arabic,
+.basmala {
+  margin: 0;
+  font-family: var(--arabic);
+  font-size: calc(clamp(1.45rem, 3.6vw, 2.1rem) * var(--arabic-scale));
+  line-height: 2.1;
+}
+
+.verse .ayah-number {
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.verse .translation {
+  margin: 0.4em auto 0;
+  max-width: 60ch;
+  font-size: calc(0.9rem * var(--translation-scale));
+  line-height: 1.55;
+}
+
+.verse.current .translation {
+  color: var(--dim);
+}
+
+/* The translation being read aloud, and the word being said in it */
+.verse.reading .translation {
+  color: var(--text);
+}
+
+.verse.reading .translation::before {
+  content: '▶ ';
+  color: var(--accent);
+}
+
+::highlight(spoken) {
+  background-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--text);
+}
+
+.basmala {
+  padding-bottom: 0.6em;
+  text-align: center;
+  color: var(--dim);
+}
+
+.tajweed .tj-madd {
+  color: var(--tj-madd);
+}
+
+.tajweed .tj-qalqalah {
+  color: var(--tj-qalqalah);
+}
+
+.tajweed .tj-ghunnah {
+  color: var(--tj-ghunnah);
+}
+
+.tajweed .tj-ra {
+  color: var(--tj-ra);
+}
+
+.tajweed .tj-waqf {
+  color: var(--tj-waqf);
+}
+
+/* Chrome paints a mark in the colour of the letter it's on, unless the mark is
+   shaped on its own, which a different font feature forces. Waqf signs sit high
+   enough above the word to come out in the right place anyway. */
+.tj-waqf {
+  font-feature-settings: 'calt' 0;
+}
+
+.tajweed-key {
+  padding-bottom: 1.2em;
+  text-align: center;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.tajweed-key p {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 14px;
+  margin: 0 0 6px;
+}
+
+.tajweed-key .sign {
+  font: 1.1rem/1 var(--arabic);
+}
+
+body:not(.tajweed) .tajweed-key,
+.no-tajweed-key .tajweed-key {
+  display: none;
+}
+
+/* --- status bar --- */
+
+.statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 8px 20px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.setting output {
+  min-width: 6ch;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.setting button,
+.setting select {
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+/* --- settings --- */
+
+.settings {
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  padding: 0; /* so a click outside the content is a click on the backdrop */
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.settings[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+
+.settings > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.settings .close {
+  padding: 2px 10px;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.settings-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px 16px;
+}
+
+.settings h3 {
+  margin: 18px 0 2px;
+  color: var(--dim);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.settings h3::before {
+  content: '# ';
+  color: var(--accent);
+}
+
+.settings .row {
+  display: flex;
+  flex-wrap: wrap; /* the control goes under its label when there's no room beside it */
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings .row > label {
+  flex: 1 1 150px;
+}
+
+.settings .row small {
+  display: block;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.settings .row[inert] {
+  opacity: 0.4;
+}
+
+.settings .note {
+  margin: 0;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--dim);
+}
+
+.settings .preview {
+  margin: 10px 0 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  text-align: center;
+  font-family: var(--arabic);
+  font-size: calc(1.7rem * var(--arabic-scale));
+  line-height: 2;
+}
+
+.settings .preview .ayah-number {
+  color: var(--accent);
+}
+
+input.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border-radius: 10px;
+  background: var(--faint);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+input.switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 0.2s;
+}
+
+input.switch:checked {
+  background: var(--accent);
+}
+
+input.switch:checked::before {
+  transform: translateX(16px);
+  background: var(--on-accent);
+}
+
+.choice {
+  display: flex;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.choice label {
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.choice label + label {
+  border-left: 1px solid var(--border);
+}
+
+/* Out of sight, but still what the keyboard and screen readers use */
+.choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.choice label:has(input:checked) {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.choice label:has(input:focus-visible),
+input.switch:focus-visible,
+.settings input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.range,
+.colour {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Beside its label when there's room, otherwise across the whole row */
+.range {
+  flex: 1 0 190px;
+}
+
+.range input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.range output {
+  min-width: 7ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type='color'] {
+  width: 34px;
+  height: 24px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+input[type='color']:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.colour button,
+.settings select {
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+.colour button {
+  color: var(--dim);
+}
+
+.reset-all {
+  width: 100%;
+  margin-top: 20px;
+  color: var(--dim);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Two rows: the name and Listen, then the other controls beside the level meter */
+  .topbar {
+    flex-wrap: wrap;
+    gap: 0 10px;
+    padding: 10px 16px;
+    padding-top: max(10px, calc(env(safe-area-inset-top) + 8px));
+  }
+  .controls {
+    display: contents;
+  }
+  #open-settings,
+  #listen {
+    order: 1;
+  }
+  #open-settings {
+    margin-left: auto;
+  }
+  .topbar::after {
+    content: '';
+    order: 2;
+    flex-basis: 100%; /* the line break */
+  }
+  .controls > :not(#listen, #open-settings) {
+    order: 3;
+    margin-top: 10px;
+  }
+  .meter {
+    order: 4;
+    min-width: 0;
+    margin-top: 10px;
+  }
+  .now-playing {
+    grid-template-columns: 64px 1fr auto;
+    gap: 14px;
+    padding: 14px 16px 4px;
+  }
+  .glyph {
+    width: 64px;
+    height: 64px;
+    font-size: 24px;
+  }
+  /* Just the speaker: the meta needs the room */
+  #read .label {
+    display: none;
+  }
+  #read {
+    padding: 9px 14px;
+  }
+  .verses {
+    padding-inline: 16px;
+  }
+  .statusbar {
+    padding-inline: 16px;
+  }
+  /* These step through ayahs, so give thumbs room. */
+  #ayah-down,
+  #ayah-up,
+  #ayah-sync {
+    padding: 6px 18px;
+    font-size: 15px;
+  }
+}
+
+/* Animations turned off in the settings, or by the device */
+.still *,
+.still *::before,
+.still *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+certs/
+.cache/
+.DS_Store
+dist/
+app/www/
