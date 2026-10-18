@@ -4,7 +4,8 @@
 import * as settings from './settings.js';
 import { arabicParagraph } from './verses-view.js';
 import * as speech from './speech.js';
-import { supported as canReadAloud, voiceFor, voicesFor } from './reader.js';
+import { supported as canReadAloud, supportedFor, voiceFor, voicesFor, RECORDED } from './reader.js';
+import * as recording from './recording.js';
 import { autoSearch } from './api.js';
 
 // 51:21, "And in yourselves. Then will you not see?": short, with all five colours.
@@ -32,7 +33,7 @@ const percent = (value) => `${value}%`;
 const seconds = (value) => `${value} s`;
 const NEXT_LISTEN = 'takes effect the next time you press Listen';
 const tajweedOn = () => settings.get('tajweed');
-const translated = (language) => () => canReadAloud && settings.get('translation') === language;
+const translated = (language) => () => supportedFor(language) && settings.get('translation') === language;
 
 /**
  * Each section's rows. `when` hides a row (or leaves out a section) that doesn't
@@ -113,7 +114,14 @@ const SECTIONS = [
         format: (value) => `${value}×`,
         when: () => canReadAloud,
       },
-      { key: 'voiceEn', label: 'voice', type: 'voice', language: 'en', when: translated('en') },
+      {
+        key: 'voiceEn',
+        label: 'voice',
+        type: 'voice',
+        language: 'en',
+        when: translated('en'),
+        hint: 'Ibrahim Walk is a recording of the translation shown (Saheeh International), played from the internet',
+      },
       { key: 'voiceMs', label: 'voice', type: 'voice', language: 'ms', when: translated('ms') },
       {
         key: 'listenWhileReading',
@@ -325,6 +333,10 @@ const CONTROLS = {
     const sample = Object.assign(document.createElement('button'), { type: 'button', textContent: 'try', title: 'Hear this voice' });
     select.addEventListener('change', () => settings.set(key, select.value));
     sample.addEventListener('click', async () => {
+      if (settings.get(key) === RECORDED) {
+        const played = await recording.play({ surah: 1, ayah: 1 }, SAMPLE[language], { rate: settings.get('readingSpeed') });
+        if (played !== null) return; // otherwise the device's voice, as when reading
+      }
       const voice = await voiceFor(language);
       speech.speak(SAMPLE[language], { voice: voice?.id, lang: voice?.lang ?? language, rate: settings.get('readingSpeed') }).catch((err) => console.warn(err));
     });
@@ -402,10 +414,12 @@ async function listMicrophones(entry) {
 async function listVoices(entry) {
   const select = entry.row.querySelector('select');
   const voices = await voicesFor(entry.spec.language);
-  select.replaceChildren(
+  const options = [
     new Option(voices.length ? 'automatic' : 'none for this language on this device', ''),
     ...voices.map((v) => new Option(`${v.name} (${v.lang})`, v.id)),
-  );
+  ];
+  if (entry.spec.language === 'en' && recording.supported) options.unshift(new Option('Ibrahim Walk (recorded)', RECORDED));
+  select.replaceChildren(...options);
   entry.update();
 }
 

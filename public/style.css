@@ -224,6 +224,25 @@ select:disabled {
   white-space: nowrap;
 }
 
+/* "Meccan · 83 verses", and the "this surah only" switch beside it */
+.details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+}
+
+#scope {
+  margin-top: 2px;
+  padding: 0 8px;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+#scope[aria-pressed='true'] {
+  color: var(--accent);
+}
+
 .progress {
   display: flex;
   align-items: center;
@@ -721,6 +740,74 @@ input[type='color']:disabled {
   margin-top: 10px;
 }
 
+/* --- the surah list --- */
+
+.surah-filter {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 14px 0 6px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
+.surah-filter:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.surah-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.surah-list button {
+  display: grid;
+  grid-template-columns: 3.5ch 1fr auto;
+  align-items: center;
+  gap: 0 10px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  text-align: start;
+}
+
+.surah-list button:hover,
+.surah-list button[aria-current] {
+  background: var(--panel);
+}
+
+.surah-list .number {
+  grid-row: span 2;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.surah-list .arabic {
+  grid-row: span 2;
+  font-family: var(--arabic);
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.surah-list .meaning {
+  grid-column: 2;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.surah-list .note {
+  padding: 12px 4px;
+  color: var(--dim);
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.3;
@@ -734,7 +821,7 @@ input[type='color']:disabled {
 }
 
 @media (max-width: 640px) {
-  /* Two rows: the name and Listen, then the audio source (if any) beside the level meter */
+  /* Two rows: the dot, the surahs, settings and Listen; then the audio source (if any) beside the level meter */
   .topbar {
     flex-wrap: wrap;
     gap: 0 10px;
@@ -744,11 +831,12 @@ input[type='color']:disabled {
   .controls {
     display: contents;
   }
+  #open-surahs,
   #open-settings,
   #listen {
     order: 1;
   }
-  #open-settings {
+  #open-surahs {
     margin-left: auto;
   }
   .topbar::after {
@@ -756,7 +844,7 @@ input[type='color']:disabled {
     order: 2;
     flex-basis: 100%; /* the line break */
   }
-  .controls > :not(#listen, #open-settings) {
+  .controls > :not(#listen, #open-settings, #open-surahs) {
     order: 3;
     margin-top: 10px;
   }

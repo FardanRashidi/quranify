@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadModel, transcribe } from './asr.js';
-import { locate, getSurah, warmUp } from './quran.js';
+import { locate, getSurah, listSurahs, warmUp } from './quran.js';
 import { loadOrCreateCert, lanAddresses } from './tls.js';
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -43,7 +43,12 @@ async function handle(req, res) {
       const audio = await readBody(req, MAX_AUDIO_BYTES);
       const transcript = await transcribe(audio);
       const near = url.searchParams.has('near') ? Number(url.searchParams.get('near')) : null;
-      return sendJson(res, 200, { match: await locate(transcript, near), transcript });
+      const surah = url.searchParams.has('surah') ? Number(url.searchParams.get('surah')) : null;
+      if (surah !== null && !(Number.isInteger(surah) && surah >= 1 && surah <= 114)) return sendJson(res, 400, { error: 'No such surah' });
+      return sendJson(res, 200, { match: await locate(transcript, near, surah), transcript });
+    }
+    if (url.pathname === '/api/quran/surahs' && req.method === 'GET') {
+      return sendJson(res, 200, { surahs: await listSurahs() });
     }
     const surahRoute = url.pathname.match(/^\/api\/quran\/surah\/(\d+)$/);
     if (surahRoute && req.method === 'GET') {

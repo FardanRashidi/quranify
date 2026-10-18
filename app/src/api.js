@@ -9,9 +9,12 @@ const quran = createQuran(cachedEdition);
 const Screen = registerPlugin('Screen');
 const AutoSearch = registerPlugin('AutoSearch');
 
-/** @param {number | null | undefined} near word index of the last match, to keep following from there */
-export async function recognizeQuran(pcm, near) {
-  return quran.locate(await transcribe(pcm), near ?? null);
+/**
+ * @param {number | null | undefined} near word index of the last match, to keep following from there
+ * @param {number | null | undefined} surah only look in this surah
+ */
+export async function recognizeQuran(pcm, near, surah) {
+  return quran.locate(await transcribe(pcm), near ?? null, surah ?? null);
 }
 
 /**
@@ -20,6 +23,10 @@ export async function recognizeQuran(pcm, near) {
  */
 export async function warmUpQuran(onProgress) {
   await Promise.all([loadModel(onProgress), quran.warmUp()]);
+}
+
+export function fetchSurahs() {
+  return quran.listSurahs();
 }
 
 export function fetchSurah(number, translation) {

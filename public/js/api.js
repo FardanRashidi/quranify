@@ -6,9 +6,13 @@ const API_BASE = '';
 /**
  * @param {ArrayBuffer} pcm 16 kHz mono s16le audio
  * @param {number | null | undefined} near word index of the last match, to keep following from there
+ * @param {number | null | undefined} surah only look in this surah
  */
-export async function recognizeQuran(pcm, near) {
-  const query = near != null ? `?near=${near}` : '';
+export async function recognizeQuran(pcm, near, surah) {
+  const params = new URLSearchParams();
+  if (near != null) params.set('near', near);
+  if (surah != null) params.set('surah', surah);
+  const query = params.size ? `?${params}` : '';
   const res = await fetch(`${API_BASE}/api/quran/recognize${query}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/octet-stream' },
@@ -23,6 +27,11 @@ export async function recognizeQuran(pcm, near) {
  */
 export async function warmUpQuran() {
   await parse(await fetch(`${API_BASE}/api/quran/warmup`, { method: 'POST' }));
+}
+
+/** Every surah, for choosing one: { number, name, englishName, englishNameTranslation, revelationType, ayahs }. */
+export async function fetchSurahs() {
+  return (await parse(await fetch(`${API_BASE}/api/quran/surahs`))).surahs;
 }
 
 export async function fetchSurah(number, translation) {

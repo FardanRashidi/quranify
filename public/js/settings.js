@@ -29,7 +29,7 @@ export const DEFAULTS = Object.freeze({
   followMax: 5, // and at the most (early in a long ayah)
   // reading aloud
   readingSpeed: 1, // 1 is the voice's normal speed
-  voiceEn: '', // a voice id, or '' for the device's own
+  voiceEn: 'ibrahim-walk', // the recording (reader.js's RECORDED), a device voice's id, or '' for the device's own
   voiceMs: '',
   listenWhileReading: false, // check while reading aloud (with headphones, the microphone can't hear it)
   // listening

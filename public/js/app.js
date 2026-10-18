@@ -1,17 +1,23 @@
 import { Listener } from './listener.js';
 import { VersesView } from './verses-view.js';
 import { SettingsPanel } from './settings-panel.js';
+import { SurahPicker } from './surah-picker.js';
 import { Follower } from './follow.js';
-import { Reader, supported as canReadAloud } from './reader.js';
+import { Reader, supportedFor } from './reader.js';
 import * as settings from './settings.js';
 import * as api from './api.js';
 
 const FIRST_TRY_AFTER = 4; // seconds of audio to collect before the first attempt
+// Looking in one surah, fewer words are enough to place the reciter, so it tries
+// sooner. In testing it found them within 7 s 66% of the time, against 55% for
+// the whole Quran with the first try at 4 s.
+const FIRST_TRY_IN_SURAH = 2.5;
 const SEARCH_EVERY = 1; // checks run locally, so try again straight away
 // Errors in a row double the wait, from the first to the second.
 const RETRY_AFTER_ERROR = 10;
 const MAX_RETRY_AFTER_ERROR = 60;
 const MIN_AUDIBLE = 3; // seconds of actual sound a clip needs before it's worth sending
+const MIN_AUDIBLE_IN_SURAH = 2;
 const LOST_AFTER = 12; // following: seconds without placing the reciter before the verses dim
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2]; // what the reading speed button steps through
 const NAME = 'Quran Whisperer';
@@ -71,12 +77,15 @@ const els = {
   translation: $('translation'),
   tajweed: $('tajweed'),
   openSettings: $('open-settings'),
+  openSurahs: $('open-surahs'),
+  scope: $('scope'),
   themeColour: document.querySelector('meta[name="theme-color"]'),
 };
 
 const listener = new Listener();
 const versesView = new VersesView($('verses'));
 const settingsPanel = new SettingsPanel($('settings'));
+const surahPicker = new SurahPicker($('surahs'));
 const follower = new Follower();
 const reader = new Reader();
 // Only desktop browsers can capture another tab's audio; phones just have the microphone.
@@ -88,6 +97,8 @@ const state = {
   session: 0, // bumped whenever in-flight work should be thrown away
   surah: null, // the surah on screen ({ number } while it loads)
   ayah: null, // the highlighted ayah
+  placed: false, // the highlighted ayah is where the reader is (found, or moved to), not just the start of a surah they opened
+  scope: null, // the surah Listen looks in, when it's to look in just one ("this surah only")
   // listening
   source: 'mic', // what's being listened to: mic | tab
   following: false, // keep listening once the reciter is found, and move along with them
@@ -144,13 +155,13 @@ async function start(follow = settings.get('listenFollow')) {
   renderListenButtons();
   if (state.surah) {
     // Keep the surah on screen, and prefer matches that continue from where the reader is.
-    state.searchFrom = state.surah.verses?.[state.ayah - 1]?.firstWord ?? null;
+    state.searchFrom = state.placed ? (state.surah.verses?.[state.ayah - 1]?.firstWord ?? null) : null;
   } else {
     reset();
     state.searchFrom = null;
   }
   setStatus('searching');
-  schedule(FIRST_TRY_AFTER);
+  schedule(state.scope ? FIRST_TRY_IN_SURAH : FIRST_TRY_AFTER);
   requestAnimationFrame(frame);
 }
 
@@ -213,10 +224,10 @@ async function attempt() {
   try {
     const clip = await listener.clip(seconds);
     if (session !== state.session) return;
-    if (clip.audible < MIN_AUDIBLE) return miss('too quiet');
+    if (clip.audible < (state.scope ? MIN_AUDIBLE_IN_SURAH : MIN_AUDIBLE)) return miss('too quiet');
     await warmUpQuran();
     if (session !== state.session) return;
-    const match = await api.recognizeQuran(clip.pcm, follower.word ?? state.searchFrom);
+    const match = await api.recognizeQuran(clip.pcm, follower.word ?? state.searchFrom, state.scope);
     if (session !== state.session) return;
     state.errors = 0;
     if (match) onVerse(match, clip.endedAt);
@@ -247,6 +258,7 @@ function onVerse(match, endedAt) {
   // listening until the reciter says something that settles it (or we run out of patience).
   state.unsure = target.unsure && performance.now() - state.listenStartedAt < settings.get('giveUpAfter') * 1000;
   if (!target.unsure) state.heardAt = performance.now();
+  state.placed = true;
   const moved = target.surah !== state.surah?.number || target.ayah !== state.ayah;
   if (state.surah?.number === target.surah) setAyah(target.ayah, state.following && wasFound ? 'follow' : true);
   else showSurah(target.surah, target.ayah);
@@ -328,7 +340,7 @@ function toggleReading() {
 }
 
 function startReading() {
-  if (!canReadAloud || settings.get('translation') === 'none') return;
+  if (!canRead()) return;
   state.reading = true;
   state.readError = '';
   readAloud();
@@ -350,7 +362,10 @@ async function readAloud() {
     renderReading();
     let finished;
     try {
-      finished = await reader.read(verse.translation, settings.get('translation'), (start, end) => versesView.markWord(start, end));
+      finished = await reader.read(verse.translation, settings.get('translation'), (start, end) => versesView.markWord(start, end), {
+        surah: state.surah.number,
+        ayah: state.readingAyah,
+      });
     } catch (err) {
       console.error(err);
       if (session === state.readSession) stopReading(`couldn't read aloud: ${err.message}`);
@@ -390,8 +405,14 @@ function nextSpeed() {
   settings.set('readingSpeed', SPEEDS.find((s) => s > speed + 0.01) ?? SPEEDS[0]);
 }
 
+// The translation can be read aloud: there is one, and a voice (or the recording) for it.
+function canRead() {
+  const translation = settings.get('translation');
+  return translation !== 'none' && supportedFor(translation);
+}
+
 function renderReading() {
-  els.reader.hidden = !canReadAloud || settings.get('translation') === 'none';
+  els.reader.hidden = !canRead();
   els.read.setAttribute('aria-pressed', String(state.reading));
   els.read.classList.toggle('speaking', state.readingAyah !== null);
   els.readSpeed.textContent = `${settings.get('readingSpeed')}×`;
@@ -408,17 +429,38 @@ function updateWakeLock() {
 
 /** Back to a blank slate: nothing found. */
 function reset() {
-  Object.assign(state, { surah: null, ayah: null, unsure: false });
+  Object.assign(state, { surah: null, ayah: null, unsure: false, placed: false, scope: null });
   els.nowPlaying.hidden = true;
   document.title = NAME;
-  versesView.message(listener.active ? 'listening for the recitation…' : 'press Listen and play a recitation');
+  versesView.message(listener.active ? 'listening for the recitation…' : 'press Listen and play a recitation, or choose a surah to read');
   renderAyah();
+  renderScope();
+}
+
+/** A surah chosen from the list: open it at the start, to read, and to listen in. */
+function pickSurah(number) {
+  if (listener.active) stop();
+  if (state.reading) stopReading();
+  state.scope = number;
+  state.placed = false;
+  if (state.surah?.number === number && state.surah.verses) setAyah(1, true);
+  else showSurah(number, 1);
+  renderScope();
+}
+
+// "this surah only": whether Listen looks in the surah on screen, or the whole Quran.
+function renderScope() {
+  els.scope.hidden = !state.surah;
+  els.scope.setAttribute('aria-pressed', String(Boolean(state.surah) && state.scope === state.surah.number));
+  renderListenButtons();
 }
 
 async function showSurah(number, ayah) {
   const placeholder = { number };
   state.surah = placeholder; // so further matches in this surah don't refetch it
   state.ayah = ayah;
+  if (state.scope !== number) state.scope = null; // that was about another surah
+  renderScope();
   if (state.reading) pauseReading(); // its verse is going; it starts again once the surah's loaded
   els.nowPlaying.hidden = false;
   els.glyph.textContent = String(number);
@@ -490,6 +532,7 @@ function setAyah(ayah, scroll = true) {
 // The reader moving through the verses themselves: − +, the arrow keys, or a tap.
 function goTo(ayah, scroll) {
   setAyah(ayah, scroll);
+  state.placed = true;
   if (state.reading) readAloud(); // read from here instead
 }
 
@@ -522,7 +565,8 @@ function statusText() {
     const wait = Math.max(0, Math.ceil((state.nextAttemptAt - performance.now()) / 1000));
     return `following${place} · next check in ${wait}s`;
   }
-  return `listening for the recitation…${state.note ? ` · ${state.note}` : ''}`;
+  const where = state.scope && state.surah?.englishName ? ` in ${state.surah.englishName}` : '';
+  return `listening for the recitation${where}…${state.note ? ` · ${state.note}` : ''}`;
 }
 
 function modelLoadingText() {
@@ -560,7 +604,7 @@ function renderStale() {
 function renderListenButtons() {
   els.listen.textContent = listener.active ? 'Stop' : 'Listen';
   els.ayahSync.textContent = listener.active ? 'stop' : 'sync';
-  const does = listenDoes();
+  const does = listenDoes() + (state.scope ? ' (in this surah only)' : '');
   els.listen.title = `Listen and ${does}  ( space )`;
   els.ayahSync.title = `Listen again and ${does}  ( S )`;
   updateWakeLock();
@@ -570,7 +614,7 @@ function renderListenButtons() {
 function listenDoes() {
   const steps = ['find the ayah'];
   if (settings.get('listenFollow')) steps.push('follow the reciter');
-  if (settings.get('listenRead') && canReadAloud && settings.get('translation') !== 'none') steps.push('read the translation aloud');
+  if (settings.get('listenRead') && canRead()) steps.push('read the translation aloud');
   return steps.length > 1 ? `${steps.slice(0, -1).join(', ')} and ${steps.at(-1)}` : steps[0];
 }
 
@@ -681,6 +725,13 @@ els.tajweed.addEventListener('click', () => settings.set('tajweed', !settings.ge
 els.read.addEventListener('click', toggleReading);
 els.readSpeed.addEventListener('click', nextSpeed);
 els.openSettings.addEventListener('click', () => settingsPanel.show());
+els.openSurahs.addEventListener('click', () => surahPicker.show(state.surah?.number ?? null));
+surahPicker.onPick = pickSurah;
+els.scope.addEventListener('click', () => {
+  if (!state.surah) return;
+  state.scope = state.scope === state.surah.number ? null : state.surah.number;
+  renderScope();
+});
 settings.onChange(applySetting);
 darkScheme.addEventListener('change', () => settings.get('theme') === 'auto' && applyTheme());
 els.ayahDown.addEventListener('click', () => step(-1));
@@ -694,10 +745,11 @@ api.onOpenAyah(({ surah, ayah }) => {
   if (listener.active) stop();
   if (state.surah?.number === surah && state.surah.verses) goTo(ayah, true);
   else showSurah(surah, ayah);
+  state.placed = true;
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey || e.metaKey || e.altKey || settingsPanel.open || e.target.closest('select, input')) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || settingsPanel.open || surahPicker.open || e.target.closest?.('select, input')) return;
   if (e.key === ' ' && !e.target.closest('button')) {
     e.preventDefault();
     els.listen.click();

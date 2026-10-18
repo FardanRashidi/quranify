@@ -1,6 +1,8 @@
 // Reads an ayah's translation aloud: picks a voice for its language, says it a
-// piece at a time, and reports each word as it's said, for highlighting.
+// piece at a time, and reports each word as it's said, for highlighting. English
+// can also be the recording of Ibrahim Walk reading it (recording.js), the default.
 import * as speech from './speech.js';
+import * as recording from './recording.js';
 import * as settings from './settings.js';
 
 // The languages each translation can be read in, best first. Malay voices are
@@ -10,11 +12,20 @@ const VOICE_SETTING = { en: 'voiceEn', ms: 'voiceMs' };
 // Characters per piece at normal speed. Chrome stops some voices (Google's
 // online ones) after about 15 s, and this is about 10 s of speech.
 const PIECE = 160;
+/** The voice setting's value for the recording, rather than one of the device's voices. */
+export const RECORDED = 'ibrahim-walk';
 
-export const supported = speech.supported;
+/** Whether this browser can read anything aloud. */
+export const supported = speech.supported || recording.supported;
+
+/** Whether it can read a translation ('en' or 'ms'): the recording is English only. */
+export const supportedFor = (language) => speech.supported || (language === 'en' && recording.supported);
+
+const recorded = (language) => language === 'en' && recording.supported && settings.get(VOICE_SETTING.en) === RECORDED;
 
 export class Reader {
   #speaking = false;
+  #playing = false; // the recording, rather than a device voice
   #again = false;
   #generation = 0; // bumped by stop(), so a read that's still starting up knows to give up
 
@@ -26,10 +37,38 @@ export class Reader {
   /**
    * Reads `text`, a translation in `language` ('en' or 'ms').
    * @param {(start: number, end: number) => void} [onWord] the word being said, as its place in `text`
+   * @param {{ surah: number, ayah: number }} [place] which ayah it is, for the recording
    * @returns {Promise<boolean>} true once it's been read to the end, false if it was stopped
    */
-  async read(text, language, onWord) {
+  async read(text, language, onWord, place) {
     const generation = ++this.#generation;
+    let playable = Boolean(place); // the recording can read it, until it fails to
+    for (;;) {
+      this.#again = false;
+      const result =
+        playable && recorded(language)
+          ? await this.#play(place, text, onWord)
+          : await this.#say(text, language, onWord, generation, () => playable && recorded(language));
+      if (generation !== this.#generation) return false;
+      if (result === null) playable = false; // the recording couldn't be played (offline?): a device voice reads this one
+      else if (!this.#again) return result;
+      // Otherwise the voice was changed: read it again in the new one.
+    }
+  }
+
+  /** The recording: true once it's played to the end, false if stopped, null if it couldn't be played. */
+  async #play(place, text, onWord) {
+    this.#speaking = this.#playing = true;
+    try {
+      return await recording.play(place, text, { rate: settings.get('readingSpeed'), onWord });
+    } finally {
+      this.#speaking = this.#playing = false;
+    }
+  }
+
+  /** A device's voice, a piece at a time. Gives up, leaving #again set, if the recording is chosen while it reads. */
+  async #say(text, language, onWord, generation, toRecording) {
+    if (!speech.supported) throw new Error('the recording couldn’t be played');
     for (const [start, end] of pieces(text, PIECE * Math.min(1, settings.get('readingSpeed')))) {
       do {
         this.#again = false;
@@ -48,6 +87,7 @@ export class Reader {
           this.#speaking = false;
         }
         if (generation !== this.#generation) return false;
+        if (this.#again && toRecording()) return false;
         if (!done && !this.#again) return false;
       } while (this.#again);
     }
@@ -57,14 +97,18 @@ export class Reader {
   /** Says the current piece again, with the speed and voice as they are now. */
   again() {
     if (!this.#speaking) return;
+    // The recording just changes speed; it doesn't need to start again.
+    if (this.#playing && recorded('en')) return recording.setRate(settings.get('readingSpeed'));
     this.#again = true;
-    speech.stop();
+    if (this.#playing) recording.stop();
+    else speech.stop();
   }
 
   stop() {
     this.#generation++;
     this.#again = false;
     speech.stop();
+    recording.stop();
   }
 }
 

@@ -9,12 +9,18 @@ It has one main button. Press **Listen**, play a recitation, and by default it:
 - **follows the reciter**, moving the highlight from ayah to ayah as they go.
   It checks more often as the reciter nears the end of an ayah: every 2
   seconds then, and up to 5 seconds apart early in a long one;
-- **reads the translation aloud** in the device's own voice, a word highlighted
-  at a time, each ayah as the reciter reaches it.
+- **reads the translation aloud**, a word highlighted at a time, each ayah as
+  the reciter reaches it. English is a real person reading it: Ibrahim Walk's
+  recording of Saheeh International, the translation shown. Malay uses the
+  device's own voice.
 
 Following and reading aloud can each be turned off in the settings, under
 **listen button**. Then Listen just finds your place and stops listening, or
 finds it and reads on through the surah by itself.
+
+You can also [choose a surah](#choosing-a-surah) from a list, to read it, have
+its translation read aloud, or have Listen look for the reciter in that surah
+only, which finds them sooner.
 
 The screen stays on while it's listening or reading. The Android app also has
 **auto search**: a Quick Settings tile that keeps listening in the background,
@@ -87,9 +93,11 @@ needs Home Assistant OS or Supervised. See
 
 ## Using it
 
-The top bar has the audio source, the [settings](#settings) button and
-**Listen**. A live level meter shows what the app hears. Once a surah is found,
-its name sits above the verses with the **read aloud** button and its speed.
+The top bar has a status dot (grey when idle, pulsing while it searches, steady
+while it follows), the audio source, the [surah list](#choosing-a-surah), the
+[settings](#settings) button and **Listen**. A live level meter shows what the
+app hears. Once a surah is found or chosen, its name sits above the verses with
+the **read aloud** button and its speed.
 The footer shows the status, the ayah controls (with **sync**, which does what
 Listen does, within reach of a thumb), the translation and the tajweed switch.
 
@@ -120,6 +128,36 @@ of the settings:
 In a browser test with Ya-Sin playing into a fake microphone, one press of
 Listen found 36:4 after 11 s and started reading its translation straight
 away. It then followed the reciter on to 36:8, and read 36:7 as they reached it.
+
+### Choosing a surah
+
+The book button next to settings lists all 114 surahs: number, name, meaning,
+how many ayahs, and the Arabic name. Type to narrow it down by number, English
+name, meaning or Arabic name (`36`, `yas`, `the cow`, `يس`); Enter opens the
+first one left. Choosing one opens it at ayah 1. From there:
+
+- **Read it.** Move with **− / +**, the arrow keys, or a tap.
+- **Hear it.** The speaker button (or `T`) reads the translation from the
+  highlighted ayah to the end of the surah.
+- **Listen in it.** Under the surah's name, **this surah only** is on when
+  you've chosen a surah. Listen then looks for the reciter in that surah
+  alone. It needs fewer words to be sure, so its first try comes after 2.5 s
+  of audio rather than 4 s, and a passage that's repeated elsewhere (like
+  Ar-Rahman's refrain) can't send it to another surah. Tap it to look in the
+  whole Quran again.
+
+It was tested on six recordings (Al-Baqarah around 2:255, Al-Kahf, Al-Mulk,
+An-Naba, Ar-Rahman and Ya-Sin), with Listen pressed 209 times at different
+points. Looking in the surah alone found the reciter after a median 6.1 s,
+against 6.6 s across the whole Quran: within 5.1 s 48% of the time (33%
+across the whole Quran), and within 7 s 66% of the time (55%). It helps most
+where the words could belong elsewhere. An-Naba, recited slowly (mujawwad),
+went from a median 13.8 s to 8.7 s. Neither way ever showed a wrong ayah as
+certain.
+
+With **this surah only** on, following stops at the end of the surah: it
+won't look for the reciter in the next one. When Listen finds a surah by
+itself, the switch is off.
 
 ### Finding your place
 
@@ -171,7 +209,8 @@ well it keeps up.
    of the surah. Press it again to stop reading and keep listening.
 2. The **1×** button next to it steps through 0.75, 1, 1.25, 1.5 and 2× speed.
    The settings have a slider from 0.5× to 2×, and a choice of voice. Changing
-   either one says the current sentence again.
+   the speed of the recording takes effect straight away; with a device's
+   voice, a change of speed or voice says the current sentence again.
 3. **− / +**, the arrow keys, or tapping a verse reads from there instead.
 4. **While following**, it reads each ayah as the reciter reaches it, so you
    hear the meaning of what's being recited. If the reciter has moved on by
@@ -184,18 +223,27 @@ the audio recorded since the voice stopped. With headphones, or with tab audio
 as the source, turn on **keep listening while reading** in the settings, and it
 keeps checking the whole time.
 
-The voices are the device's own:
+The voices:
 
-- **English** can use any English voice.
-- **Malay** uses a Malay voice if the device has one, otherwise an Indonesian
-  one, which is close enough to follow.
+- **English** is, by default, **Ibrahim Walk (recorded)**: Ibrahim Walk reading
+  the Saheeh International translation, the same text the app shows, one
+  recording per ayah. It's played from alquran.cloud's CDN, so it needs the
+  internet. The word highlight follows his voice, from word timings made
+  ahead of time (see [The recorded voice](#the-recorded-voice)). If a
+  recording can't be played (offline, say), the device's voice reads that
+  ayah instead. Any of the device's English voices can be chosen instead in
+  the settings.
+- **Malay** uses the device's voice: a Malay one if it has one, otherwise an
+  Indonesian one, which is close enough to follow. Nobody has recorded the
+  Basmeih translation.
 - Windows, macOS, iOS and Android come with voices. Chrome and Firefox on
   Linux only have them when `speech-dispatcher` is installed.
 - On Android you can add voices under *Settings → System → Languages → Text-to-speech
   output*.
 
-Where a browser has no voices at all, the button is hidden and the settings say
-so. The button is also hidden when the translation is set to **None**.
+Where a browser has no voices at all, English still uses the recording, and for
+Malay the button is hidden and the settings say so. The button is also hidden
+when the translation is set to **None**.
 
 ### Keeping the screen on
 
@@ -255,7 +303,7 @@ bottom, Esc, Back, or a tap outside it.
 | appearance    | theme (dark, light, or auto to follow the device), accent colour, level meter, animations |
 | verses        | translation; Arabic and translation text size; tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour. A sample ayah (51:21) shows the result as you go. |
 | following     | scroll along to each ayah (on); the shortest wait between checks (2 s, from 1 to 5) and the longest (5 s, from 2 to 15) |
-| reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation's language, with a **try** button to hear it; keep listening while reading (off) |
+| reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation's language (English: **Ibrahim Walk (recorded)**, or any of the device's English voices), with a **try** button to hear it; keep listening while reading (off) |
 | listening     | audio source; which microphone (when there's more than one); how much audio each check sends (8 s); how long it listens without placing the reciter before giving up (60 s) |
 | auto search   | Android app only: listening in the background, on or off; **add** the Quick Settings tile (Android 13 and later). See [Auto search](#auto-search). |
 
@@ -286,16 +334,20 @@ microphone or tab audio
  │ listener.js: AudioWorklet → 12 s ring buffer
  │ clip(): last 8 s → 16 kHz mono PCM
  │
- ├── POST /api/quran/recognize?near=N ──▶ asr.js: Whisper, on this CPU
- │                                        quran.js: find those words in the Quran
+ ├── POST /api/quran/recognize?near=N&surah=S ─▶ asr.js: Whisper, on this CPU
+ │                                        quran.js: find those words in the Quran (or one surah)
  │   ◀─ surah, ayah, word, ambiguous ───
  │      GET /api/quran/surah/:n ────────▶ quran.js ── first run only ──▶ alquran.cloud, quran.com
  │   ◀─ verses + translation ───────────  asr.js ──── first run only ──▶ Hugging Face
+ │      GET /api/quran/surahs ──────────▶ quran.js (the surah list)
  │
- └── reader.js → speech.js: the device's own voices (speechSynthesis)
+ └── reader.js ┬ recording.js: Ibrahim Walk's recording ─────────────────▶ cdn.islamic.network
+               │   + data/walk-timings.json (when each word is said)          (alquran.cloud's CDN)
+               └ speech.js: the device's own voices (speechSynthesis)
 
 app.js decides when to listen and what to show; follow.js times the checks
-while following; verses-view.js draws the verses and highlights.
+while following; verses-view.js draws the verses and highlights;
+surah-picker.js is the surah list.
 ```
 
 The browser captures audio, keeps time and reads aloud. The server does the
@@ -404,7 +456,9 @@ every distinct word.
 
 ### Finding the passage
 
-`locate(transcript, near)` works in steps:
+`locate(transcript, near, surah)` works in steps. With `surah`, it looks in
+that surah alone: only its words vote in step 1, and alignments stay inside
+it.
 
 1. **Vote for candidates.** For each transcript word, every place that word
    appears in the Quran votes for where the transcript would start there. Rare
@@ -684,6 +738,79 @@ there's at least 4 seconds of it. That time doesn't count towards the 12 s
 "can't hear the reciter" or the 60 s give-up timers either. **keep listening
 while reading** turns all of that off, for headphones.
 
+### The recorded voice
+
+English is read by default from
+[Ibrahim Walk's recording](https://alquran.cloud/cdn) of Saheeh International,
+which is alquran.cloud's audio edition `en.walk`. It's the same text the app
+shows (`en.sahih`), one MP3 per ayah, numbered from 1 (1:1) to 6236 (114:6):
+`https://cdn.islamic.network/quran/audio/192/en.walk/{n}.mp3`. The whole
+reading is 16.6 hours, about 480 MB, so it's streamed an ayah at a time rather
+than kept.
+
+**When each word is said** comes from
+[`public/data/walk-timings.json`](public/data/walk-timings.json) (820 KB, 260 KB
+compressed),
+made once by [`scripts/walk-timings.mjs`](scripts/walk-timings.mjs)
+(`npm run walk-timings`):
+
+1. It downloads each ayah's recording and has an English Whisper model
+   (`whisper-base.en`, with word timestamps) transcribe it. Its word times
+   were within about 0.06 s of the silences between words. `tiny.en` heard
+   the words as well, but put them 0.2–0.4 s late.
+2. It lines up the words it heard with the words of the `en.sahih` text by
+   edit distance. A word that lines up with a heard word, even misspelt, takes
+   its start time. One that doesn't is placed between its neighbours, and
+   punctuation on its own gets none.
+3. It measures where the sound starts and stops in the file (the first and
+   last 10 ms within about 30 dB of the loudest), and fits the times to it.
+   Now and then Whisper misses the first or last few words of an ayah: in
+   37:90 it heard only "departing", the last word. Those words would all share
+   the time of the nearest word it heard, so when that's more than 0.3 s from
+   where the sound starts or stops, they're spread out, by length, to fill the
+   gap. And the end is where the sound stops, if that's later than Whisper's
+   end for the last word, which is often early.
+4. It saves, for each ayah, a start time for each word of the text (split at
+   spaces, in hundredths of a second), and where the sound starts and ends.
+
+On average, 98% of each ayah's words matched a word Whisper heard exactly, and
+in 4,603 of the 6,236 ayahs (74%) every word did. Most of the rest are
+spellings ("Sophia Allah" for "So fear Allah"), which still give the right
+time. The lowest are the disjoined letters, like "Alif, Lam, Meem" heard as
+"Alistelam Meeem". Step 3 spread out the openings of 22 ayahs and the endings
+of 20, and moved the end later in 1,592, by 0.09 s typically and up to 2.4 s
+where Whisper missed a last sentence (11:30, 50:36).
+
+It runs four workers side by side, each with a quarter of the CPU's threads.
+On a Ryzen 7 5800X3D that's 15–18× real time, so the whole reading takes about
+an hour; one worker alone managed 10×. Each needs about 1.7 GB of memory, so
+`npm run walk-timings -- --workers 2` uses fewer. It keeps its progress in
+`.cache/walk-timings/`, so a stopped run carries on, and `report.tsv` there
+lists how well each ayah lined up.
+
+[`public/js/recording.js`](public/js/recording.js) plays it:
+
+- Two `<audio>` players take turns: one plays an ayah while the other loads
+  the next, so reading on doesn't wait for a download.
+- Most files start with about a second of silence (0.5–1.7 s) and end with
+  some too. Playback starts 0.15 s before the sound (or the first word, if
+  that's earlier, so it never skips anything that can be heard), and the ayah
+  counts as read 0.15 s after the sound ends.
+- The speed is the player's `playbackRate`, with the pitch kept, so changing
+  it doesn't restart the ayah.
+- The word highlight follows the player's `currentTime` through the word
+  times, every frame, and on `timeupdate` when the page is hidden.
+- Safari only lets a player that was started by a tap play sound, and reading
+  often starts seconds after one (once Listen has found the ayah). So the
+  same two players are used throughout, and each plays a tenth of a second of
+  silence at the first tap or key press.
+- If an ayah can't be played (an error, or nothing after 10 seconds), it
+  returns `null` and `reader.js` has the device's voice read that ayah. The
+  next ayah tries the recording again.
+
+The voice setting's value for it is `ibrahim-walk` (`RECORDED` in
+`reader.js`), and it's the default for English.
+
 ### In the Android app
 
 Android's WebView has no `speechSynthesis`. So the app swaps in
@@ -699,6 +826,10 @@ built on Android's `TextToSpeech`:
 - `stop` resolves the reading in progress as stopped, even with engines that
   don't say so themselves.
 
+The recorded voice plays in the WebView just as in a browser. Capacitor's
+WebView lets pages play sound without a tap, and `walk-timings.json` comes with
+the app.
+
 ## The server
 
 [`server/index.js`](server/index.js) is plain `node:http` with no framework.
@@ -708,12 +839,13 @@ built on Android's `TextToSpeech`:
 | Request                                    | Sends                                        | Returns |
 | ------------------------------------------ | -------------------------------------------- | ------- |
 | `POST /api/quran/warmup`                   | nothing                                      | `{ ready: true }` once the model and index are loaded |
-| `POST /api/quran/recognize?near=N`         | 16 kHz mono s16le PCM, at most 12 s; `near` (a word's place in the whole Quran) is optional | `{ match: { surah, ayah, word, ayahEnd, score, ambiguous, continues } or null, transcript }` |
+| `POST /api/quran/recognize?near=N&surah=S` | 16 kHz mono s16le PCM, at most 12 s; `near` (a word's place in the whole Quran) and `surah` (1–114, to look in that surah alone) are optional | `{ match: { surah, ayah, word, ayahEnd, score, ambiguous, continues } or null, transcript }` |
+| `GET /api/quran/surahs`                    |                                              | `{ surahs: [{ number, name, englishName, englishNameTranslation, revelationType, ayahs }] }`, `ayahs` being how many |
 | `GET /api/quran/surah/:n?translation=en`   | `translation`: `en`, `ms` or `none`          | `{ surah: { number, name, englishName, englishNameTranslation, revelationType, basmala, verses: [{ number, text, segments, translation, firstWord, words }] } }`; `segments` are `[text, colour]` pieces (see Tajweed colours), `basmala` is the same, or `null` for Al-Fatiha and At-Tawbah, and `firstWord` / `words` place each ayah in the index |
 | any other `GET`                            |                                              | a file from `public/` |
 
-Errors come back as `{ error }`: 404 for an unknown route or surah, 405, 413
-for clips over 12 s, and 502 for anything else, such as the Quran text failing
+Errors come back as `{ error }`: 400 for a `surah` that isn't 1–114, 404 for
+an unknown route or surah, 405, 413 for clips over 12 s, and 502 for anything else, such as the Quran text failing
 to download.
 
 ### http and https on one port
@@ -750,7 +882,11 @@ machine's hostname, `127.0.0.1` and every LAN IPv4 address, and saves it in
 - **Recognition:** the audio is transcribed on your server and goes nowhere
   else. The model (from Hugging Face) and the Quran text (from alquran.cloud
   and quran.com) are each downloaded once.
-- **Reading aloud:** the device's voice is given the translation text, never
+- **Reading aloud, the recorded voice:** the phone or computer reading aloud
+  downloads each ayah's recording from `cdn.islamic.network`, alquran.cloud's
+  CDN, about 80 KB an ayah on average. That server sees your IP address and
+  which ayahs are read. Nothing is sent to it but the request.
+- **Reading aloud, the device's voice:** it's given the translation text, never
   the audio. Most voices run on the device. A few are online, such as Chrome's
   "Google …" voices on a computer and Edge's "Online (Natural)" voices, and
   they send the text to Google or Microsoft. Pick another voice in the
@@ -1028,6 +1164,7 @@ Measured on a Ryzen 7 5800X3D unless noted.
 | Loading the cached speech model                | about 1 s                                      |
 | Server memory                                  | ~120 MB; ~1.3 GB with the model loaded         |
 | Downloads on first use                         | 383 MB model, 4.4 MB text                      |
+| The recorded voice                             | about 80 KB an ayah, streamed (480 MB for the whole Quran) |
 
 ## Project layout
 
@@ -1045,13 +1182,16 @@ public/
   index.html      the page
   style.css       terminal look, Arabic typography, mobile layout
   fonts/          KFGQPC Uthmanic Script Hafs, the Arabic font
+  data/walk-timings.json  when each word of the recorded voice is said (from scripts/walk-timings.mjs)
   js/app.js              state machine: when to listen, what to show, reading aloud, controls
   js/follow.js           following: where the reciter is, the pace, when to check next
   js/listener.js         audio capture, ring buffer, clips, level meter
   js/capture-worklet.js  audio-thread capture (mono mixdown)
   js/verses-view.js      verse rendering, highlighting the ayah and the word being read, scrolling
   js/reader.js           reading a translation aloud: voice, pieces, words
+  js/recording.js        the recorded English voice: playing it, its word highlight
   js/speech.js           the browser's speechSynthesis (the app swaps in app/src/speech.js)
+  js/surah-picker.js     the surah list
   js/settings.js         settings: defaults, saving, change notifications
   js/settings-panel.js   the settings panel
   js/api.js              backend calls and the screen wake lock (the app swaps in app/src/api.js)
@@ -1073,6 +1213,8 @@ app/              Android app: the same page, with the server's work done on the
     QuranSearch.java         lib/quran.js's locate() in Java, for auto search
     QuranText.java           downloads and keeps the Quran text for QuranSearch
     MainActivity.java   registers the plugins, sends Back to the page first
+scripts/
+  walk-timings.mjs  npm run walk-timings → public/data/walk-timings.json
 capacitor.config.json  app id and where the Android project lives
 homeassistant/
   quran_finder/   add-on: config.yaml, Dockerfile, DOCS.md
@@ -1100,10 +1242,18 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   checks while the voice speaks, so a fast reciter can get ahead and some ayahs
   go unread. Headphones with **keep listening while reading** avoid that, and
   so does turning reading aloud off under **listen button**.
-- **The word highlight** depends on the voice reporting its words. Some don't
-  (eSpeak NG on Android, for one), and then only the ayah is marked.
-- **You can't open a surah by hand.** Reading aloud and the ayah buttons work
-  on the surah a recitation found.
+- **The word highlight** of a device's voice depends on the voice reporting its
+  words. Some don't (eSpeak NG on Android, for one), and then only the ayah is
+  marked. The recorded voice's highlight comes from a speech model's timings,
+  so now and then a word is marked a little early or late.
+- **The recorded voice needs the internet**, and it's English only: there's
+  no recording of the Malay translation. Its terms of use haven't been
+  checked. alquran.cloud offers it through its public API, but the recording
+  itself may have its own licence, so check before publishing the app.
+- **The recorded voice on an iPhone is untested.** The silent-tap trick is
+  there for Safari, but it's only been tried in Chrome and the Android
+  emulator's WebView.
+- **this surah only** stops following at the end of the surah.
 - **Tab audio** only works in Chromium-based browsers.
 - **Auto search** is only in the Android app (a web page can't keep listening
   in the background). It hasn't been tried with a real microphone in a room,
@@ -1134,3 +1284,12 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   [quran.com's repository](https://github.com/quran/quran.com-frontend-next/tree/production/public/fonts/quran/hafs/uthmanic_hafs).
 - [quran.com](https://quran.com): the KFGQPC text (through its API), and
   per-verse and per-word recitation timings used for testing.
+- **Ibrahim Walk**: the recorded reading of the Saheeh International
+  translation, served by [alquran.cloud](https://alquran.cloud/cdn) from
+  `cdn.islamic.network` (audio edition `en.walk`). The same recording is on
+  [EveryAyah](https://everyayah.com/data/English/Sahih_Intnl_Ibrahim_Walk_192kbps/).
+- **Saheeh International**: the English translation.
+- [whisper-base.en](https://huggingface.co/openai/whisper-base.en) (OpenAI,
+  MIT), in [Xenova's ONNX export](https://huggingface.co/Xenova/whisper-base.en):
+  the word timings of the recorded voice, made once by
+  `scripts/walk-timings.mjs`.

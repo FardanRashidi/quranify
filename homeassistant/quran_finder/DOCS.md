@@ -39,8 +39,10 @@ microphone.
   *follow the reciter* off in the settings, and it stops listening once it has
   found the place. Once loaded, the speech model takes about 1.3 GB of RAM,
   so give the VM at least 1.5 GB more than Home Assistant already uses.
-- Reading the translation aloud uses the voices of the phone or computer the
-  page is open on, not the add-on.
+- Reading the translation aloud happens on the phone or computer the page is
+  open on, not the add-on. English is Ibrahim Walk's recording, which that
+  device streams from alquran.cloud's CDN; Malay (or English, if you choose)
+  uses that device's own voices.
 - In a Proxmox VM, set the CPU type to `host` for full speed (the default type
   hides newer instructions like AVX2).
 - Port 3001 must be free on the Home Assistant host. It's 3001 rather than 3000
