@@ -1,16 +1,26 @@
-# sound-finder
+# quran-finder
 
-A web app that listens to whatever is playing around you and tells you what it is.
+A web app that listens to a Quran recitation, works out the surah and ayah, and
+shows the verses with an English or Malay translation.
 
-- **Music mode** identifies the song and shows its lyrics in time with it, with
-  the current line highlighted, in a dark terminal style.
-- **Quran mode** recognises a recitation, works out the surah and ayah, and shows
-  the verses with an English or Malay translation for you to follow along.
+- **Listen & sync** finds where the reciter is, highlights that ayah, and turns
+  the microphone off. You move on through the verses yourself.
+- **Follow** keeps listening and moves the highlight from ayah to ayah as the
+  reciter goes. It checks every couple of seconds through short ayahs and up
+  to every 5 seconds in long ones.
+- **Read aloud** reads the translation in the device's own voice, a word
+  highlighted at a time. It reads either through the surah on its own, or
+  ayah by ayah along with the reciter while following.
+- The screen stays on while it's listening or reading.
 
-It runs as a small Node server on your computer (or on Home Assistant). Any phone,
-tablet or computer on your network opens it in the browser and uses its own
-microphone. There is also an [Android app](#android-app) that does everything
-on the phone, with no server.
+It runs as a small Node server on your computer (or on Home Assistant). Any
+phone, tablet or computer on your network opens it in the browser and uses its
+own microphone. There is also an [Android app](#android-app) that does
+everything on the phone, with no server.
+
+It started as the Quran mode of
+[sound-finder](https://github.com/FardanRashidi/sound-finder), without the
+music side, and runs on port 3001 so the two can run side by side.
 
 ## Contents
 
@@ -18,8 +28,9 @@ on the phone, with no server.
 - [Using it](#using-it)
 - [How it fits together](#how-it-fits-together)
 - [Audio capture](#audio-capture)
-- [Music mode in detail](#music-mode-in-detail)
-- [Quran mode in detail](#quran-mode-in-detail)
+- [Finding the ayah](#finding-the-ayah)
+- [Following the reciter](#following-the-reciter)
+- [Reading the translation aloud](#reading-the-translation-aloud)
 - [The server](#the-server)
 - [What leaves your machine](#what-leaves-your-machine)
 - [Home Assistant add-on](#home-assistant-add-on)
@@ -27,27 +38,27 @@ on the phone, with no server.
 - [Performance](#performance)
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
-- [Before turning this into a real app](#before-turning-this-into-a-real-app)
 - [Credits and licences](#credits-and-licences)
 
 ## Quick start
 
 You need Node 20 or newer, `openssl` (to make the https certificate), and an
-internet connection.
+internet connection the first time.
 
 ```sh
-git clone https://github.com/FardanRashidi/sound-finder.git
-cd sound-finder
+git clone https://github.com/FardanRashidi/quranify.git
+cd quranify
 npm install
-npm start        # → http://localhost:3000   (npm run dev restarts on changes)
+npm start        # → http://localhost:3001   (npm run dev restarts on changes)
 ```
 
-Open <http://localhost:3000>, press **Listen**, allow the microphone, and play
-some music.
+Open <http://localhost:3001>. The first time, the server downloads its speech
+model (about 400 MB). Then press **Listen & sync** or **Follow**, allow the
+microphone, and play a recitation.
 
 ### From your phone or another computer
 
-Open the `https://<your-ip>:3000` address the server prints when it starts.
+Open the `https://<your-ip>:3001` address the server prints when it starts.
 Plain `http://` redirects there. Browsers only allow the microphone on https
 pages (or on localhost), so the server makes its own certificate the first time
 it runs. Each device shows a warning once:
@@ -57,7 +68,7 @@ it runs. Each device shows a warning once:
 - **Firefox:** *Accept the Risk and Continue*
 
 If the device still can't connect, check your firewall. For example, with ufw:
-`sudo ufw allow from 192.168.1.0/24 to any port 3000 proto tcp`.
+`sudo ufw allow from 192.168.1.0/24 to any port 3001 proto tcp`.
 
 ### On Home Assistant
 
@@ -67,46 +78,24 @@ needs Home Assistant OS or Supervised. See
 
 ## Using it
 
-The top bar has a mode switch (**Music** / **Quran**), the audio source, the
-[settings](#settings) button, and the listen button. A live level meter shows
-what the app hears. The footer shows the status, a timing or ayah control, and
-(in Quran mode) the translation.
+The top bar has the audio source, the [settings](#settings) button, **Follow**
+and **Listen & sync**. A live level meter shows what the app hears. Once a
+surah is found, its name sits above the verses with the **read aloud** button
+and its speed. The footer shows the status, the ayah controls, the translation
+and the tajweed switch.
 
-### Music mode
+The server starts loading its speech model as soon as the page opens. The
+first time ever, that's a 400 MB download, which takes a minute; the footer
+shows its progress.
 
-1. Press **Listen** (or Space). After about 4 seconds of audio it makes its first
-   attempt, and a song is usually identified about 5 seconds after you press
-   Listen.
-2. You get the cover art, title, artist, album and year, a progress bar, and the
-   lyrics. The interface takes its colours from the album art (unless that's
-   turned off in settings).
-3. The lyrics scroll with the song. The current line is bright, past lines fade,
-   and an intro longer than 3 seconds gets a `♪` line. If you scroll yourself,
-   auto-scroll pauses for 4 seconds.
-4. **Dimmed lyrics** mean "not sure yet". This happens when the match came from
-   a short clip (it re-checks after 3 seconds) or when listening is stopped.
-5. **Sync** (or `S`) identifies again right now, from audio already heard. Use
-   it if the lyrics feel off.
-6. **lyrics − / +** (or `[` `]`) shifts the lyrics 0.25 s later or sooner, if a
-   song's lyric timings are slightly off. The app remembers this setting.
-7. When the song stops (4 seconds of silence), changes, or ends, the screen
-   clears and it starts listening for the next one.
+### Finding your place: Listen & sync
 
-The timings above are the defaults; they can be changed in settings.
-
-If a song has no synced lyrics, the plain lyrics are shown without
-highlighting. Instrumentals show `♪ instrumental ♪`.
-
-### Quran mode
-
-1. Switch to **Quran**. The server starts loading its speech model straight
-   away. The first time ever, it downloads about 400 MB, which takes a minute.
-2. Press **Listen & sync** and play a recitation. It listens until it knows
-   where the reciter is. Then it shows the surah, highlights the ayah, and turns
-   the microphone off.
-3. Move through the verses yourself with **ayah − / +** in the footer, `[` `]`,
-   the arrow keys, or by tapping a verse.
-4. Lost your place, or did the reciter jump? Press **sync** next to the ayah
+1. Press **Listen & sync** (or Space) and play a recitation. It listens until
+   it knows where the reciter is, usually 5–7 seconds. Then it shows the surah,
+   highlights the ayah, and turns the microphone off.
+2. Move through the verses yourself with **− / +** in the footer, `[` `]`, the
+   arrow keys, or by tapping a verse.
+3. Lost your place, or did the reciter jump? Press **sync** next to the ayah
    buttons (or **Listen & sync** again). The surah stays on screen while it
    listens, and it prefers matches that continue from where you are.
 
@@ -115,12 +104,88 @@ it heard could be either, it shows its best guess dimmed and keeps listening
 until the reciter says something that settles it. It gives up after 60 seconds
 without a match.
 
-Translations: **English** (Saheeh International), **Melayu** (Abdullah Muhammad
-Basmeih), or **None**.
+### Following along: Follow
+
+1. Press **Follow** (or `F`). It searches the same way, but once it has found
+   the reciter it keeps listening. The highlight moves to each new ayah as the
+   reciter reaches it, and the page scrolls along with it.
+2. How often it checks depends on the ayah. In a short ayah it checks every
+   2 seconds. Early in a long one it waits up to 5 seconds, then checks more
+   often as the reciter nears the end. The footer counts down to the next
+   check: `following Yaseen 36:12 · next check in 3s`.
+3. When it hears the reciter finish an ayah, it moves on to the next one
+   straight away, without waiting to hear it begin.
+4. If it can't place the reciter for 12 seconds (a long pause, noise, or a
+   passage it can't tell apart from another), the verses dim and it keeps
+   listening. After 60 seconds without placing them, it stops.
+5. Press **Follow** again, **Stop**, or Space to stop. Pressing **Follow**
+   while **Listen & sync** is still searching makes it carry on following once
+   it finds the place.
+
+If you scroll yourself, the auto-scroll pauses for 4 seconds. You can still
+step or tap to another ayah, but the next check moves the highlight back to the
+reciter. Following uses more CPU than a single sync, about 11 checks a minute;
+see [Following the reciter](#following-the-reciter) for how it's timed and how
+well it keeps up.
+
+### Hearing the translation: read aloud
+
+1. With a surah on screen, press the speaker button above the verses (or `T`).
+   It reads the translation of the highlighted ayah, highlighting each word as
+   it's said, then moves to the next ayah and carries on to the end of the
+   surah. Press it again to stop.
+2. The **1×** button next to it steps through 0.75, 1, 1.25, 1.5 and 2× speed.
+   The settings have a slider from 0.5× to 2×, and a choice of voice. Changing
+   either one says the current sentence again.
+3. **− / +**, the arrow keys, or tapping a verse reads from there instead.
+4. **With Follow on**, it reads each ayah as the reciter reaches it, so you
+   hear the meaning of what's being recited. If the reciter has moved on by
+   the time it finishes, it skips to where they are. If it finishes first, it
+   waits for the reciter to start the next ayah. Stopping Follow also stops
+   the reading.
+
+The microphone would hear the voice through the speaker and get confused. So
+while it reads, Follow pauses its checks, and afterwards it only listens to
+the audio recorded since the voice stopped. With headphones, or with tab audio
+as the source, turn on **keep listening while reading** in the settings, and it
+keeps checking the whole time.
+
+The voices are the device's own:
+
+- **English** can use any English voice.
+- **Malay** uses a Malay voice if the device has one, otherwise an Indonesian
+  one, which is close enough to follow.
+- Windows, macOS, iOS and Android come with voices. Chrome and Firefox on
+  Linux only have them when `speech-dispatcher` is installed.
+- On Android you can add voices under *Settings → System → Languages → Text-to-speech
+  output*.
+
+Where a browser has no voices at all, the button is hidden and the settings say
+so. The button is also hidden when the translation is set to **None**.
+
+### Keeping the screen on
+
+While it's listening (searching or following) or reading aloud, the screen
+doesn't go to sleep. When it stops, the screen goes back to its usual timeout.
+
+- **In the browser**, this uses the
+  [Screen Wake Lock API](https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API):
+  Chrome and Edge 84+, Safari 16.4+ (iOS too), and Firefox 126+. It needs an https page, which the app already is. Browsers release it
+  when you switch to another tab or app, so the app asks again when you come
+  back. Some browsers refuse it in battery-saver mode, and then the screen
+  sleeps as usual.
+- **In the Android app**, it sets the window's `FLAG_KEEP_SCREEN_ON`, which
+  works everywhere and needs no permission.
+
+### Translations and tajweed
+
+Translations: **English** (Saheeh International), **Melayu** (Abdullah
+Muhammad Basmeih), or **None**.
 
 The verses are shown in the Uthmani text and font of the King Fahd Complex
-(KFGQPC), the same as the Madinah mushaf, with each ayah number in an end-of-ayah
-sign. They are coloured the way Malaysian tajweed mushafs colour them:
+(KFGQPC), the same as the Madinah mushaf, with each ayah number in an
+end-of-ayah sign. They are coloured the way Malaysian tajweed mushafs colour
+them:
 
 - red for madd of 4–6 counts;
 - blue for qalqalah;
@@ -134,72 +199,70 @@ recolour each one, and hide the key.
 
 ### Keys
 
-| Key        | Music                        | Quran                    |
-| ---------- | ---------------------------- | ------------------------ |
-| Space      | start / stop listening       | Listen & sync / stop     |
-| `S` or `R` | identify again now           | Listen & sync            |
-| `]` or `→` | lyrics 0.25 s sooner         | next ayah                |
-| `[` or `←` | lyrics 0.25 s later          | previous ayah            |
+| Key        | Does                                          |
+| ---------- | --------------------------------------------- |
+| Space      | Listen & sync / stop                          |
+| `S` or `R` | check again now (starts Listen & sync if stopped) |
+| `F`        | Follow on / off                               |
+| `T`        | read aloud on / off                           |
+| `]` or `→` | next ayah                                     |
+| `[` or `←` | previous ayah                                 |
 
 ### Settings
 
-The **settings** button (the sliders next to Listen) opens a panel with
+The **settings** button (the sliders next to Follow) opens a panel with
 everything you can change. Changes take effect straight away and are saved in
 the browser, or in the app. Close it with ×, Esc, Back, or a tap outside it.
 
-| Section    | Settings |
-| ---------- | -------- |
-| appearance | theme (dark, light, or auto to follow the device), accent colour, colours from the album art, level meter, animations |
-| quran      | translation; Arabic and translation text size; tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour. A sample ayah (51:21) shows the result as you go. |
-| music      | lyrics text size, lyrics timing, scrolling along with the song |
-| listening  | audio source; which microphone (when there's more than one); how much audio each try sends (8 s); how often music mode tries (3 s) and re-checks (15 s); how much silence means the song stopped (4 s); how long Quran mode listens before giving up (60 s) |
+| Section       | Settings |
+| ------------- | -------- |
+| appearance    | theme (dark, light, or auto to follow the device), accent colour, level meter, animations |
+| verses        | translation; Arabic and translation text size; tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour. A sample ayah (51:21) shows the result as you go. |
+| following     | scroll along to each ayah (on); the shortest wait between checks (2 s, from 1 to 5) and the longest (5 s, from 2 to 15) |
+| reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation's language, with a **try** button to hear it; keep listening while reading (off) |
+| listening     | audio source; which microphone (when there's more than one); how much audio each check sends (8 s); how long it listens without placing the reciter before giving up (60 s) |
 
-The footer's translation, **tajweed** and lyric timing controls change the same
-settings, and the panel keeps up with them. Microphones only have names once
-the page has been allowed to use one. **reset all settings** (tap it twice)
-puts everything back to the defaults, except the mode.
+The footer's translation and **tajweed** controls and the speed button change
+the same settings, and the panel keeps up with them. Microphones only have
+names once the page has been allowed to use one. **reset all settings** (tap it
+twice) puts everything back to the defaults.
 
 [`public/js/settings.js`](public/js/settings.js) holds the defaults and keeps
-the changed ones in `localStorage`, under `settings`. Older versions kept the
-mode, translation, tajweed and lyric timing under keys of their own; those are
-moved over the first time. [`settings-panel.js`](public/js/settings-panel.js)
-builds the panel from a list of rows, and `applySetting()` in
-[`app.js`](public/js/app.js) puts each change into effect.
+the changed ones in `localStorage`, under `settings`.
+[`settings-panel.js`](public/js/settings-panel.js) builds the panel from a list
+of rows, and `applySetting()` in [`app.js`](public/js/app.js) puts each change
+into effect.
 
 ### Audio source
 
-- **Microphone:** for sound from speakers in the room.
-- **Tab / system audio:** for audio playing on the same computer, e.g. on
-  headphones. Share the tab that's playing, with "Share tab audio" ticked. Only
-  Chromium-based browsers (Chrome, Edge, Brave) support this.
+- **Microphone:** for a recitation from speakers in the room.
+- **Tab / system audio:** for a recitation playing on the same computer, e.g.
+  on headphones. Share the tab that's playing, with "Share tab audio" ticked.
+  Only Chromium-based browsers (Chrome, Edge, Brave) support this.
 
 ## How it fits together
 
 ```
-browser (public/)                  server (server/, Node)                  outside services
-─────────────────                  ──────────────────────                  ────────────────
+browser (public/)                          server (server/, Node)                outside services
+─────────────────                          ──────────────────────                ────────────────
 microphone or tab audio
  │ listener.js: AudioWorklet → 12 s ring buffer
  │ clip(): last 8 s → 16 kHz mono PCM
  │
- ├─ Music ── POST /api/recognize ──▶ recognize.js ── audio fingerprint ──▶ Shazam
- │                                                 └ Apple Music id ─────▶ iTunes (track length)
- │        ◀─ title, artist, offset ─
- │           GET /api/lyrics ──────▶ lyrics.js ──────────────────────────▶ LRCLIB
- │        ◀─ timed lines ──────────
+ ├── POST /api/quran/recognize?near=N ──▶ asr.js: Whisper, on this CPU
+ │                                        quran.js: find those words in the Quran
+ │   ◀─ surah, ayah, word, ambiguous ───
+ │      GET /api/quran/surah/:n ────────▶ quran.js ── first run only ──▶ alquran.cloud, quran.com
+ │   ◀─ verses + translation ───────────  asr.js ──── first run only ──▶ Hugging Face
  │
- └─ Quran ── POST /api/quran/recognize ─▶ asr.js: Whisper, on this CPU
-                                          quran.js: find those words in the Quran
-          ◀─ surah, ayah, ambiguous ──
-             GET /api/quran/surah/:n ──▶ quran.js ── first run only ─────▶ alquran.cloud, quran.com
-          ◀─ verses + translation ────   asr.js ──── first run only ─────▶ Hugging Face
+ └── reader.js → speech.js: the device's own voices (speechSynthesis)
 
-app.js decides when to listen and what to show; lyrics-view.js draws it.
+app.js decides when to listen and what to show; follow.js times the checks
+while following; verses-view.js draws the verses and highlights.
 ```
 
-The browser captures audio and keeps time. The server does the recognition.
-For music, the heavy matching happens at Shazam. For the Quran, it happens on
-the server's own CPU, and nothing is sent anywhere.
+The browser captures audio, keeps time and reads aloud. The server does the
+recognition on its own CPU, and nothing is sent anywhere else.
 
 ## Audio capture
 
@@ -207,9 +270,9 @@ All in [`public/js/listener.js`](public/js/listener.js) and
 [`capture-worklet.js`](public/js/capture-worklet.js).
 
 - **Raw input.** The microphone is opened with echo cancellation, noise
-  suppression and automatic gain turned off. Those are tuned for voice calls and
-  mangle music. Tab audio uses `getDisplayMedia`, and the video track is dropped
-  straight away.
+  suppression and automatic gain turned off. Those are tuned for calls, and
+  can strip a recitation out as echo or noise. Tab audio uses
+  `getDisplayMedia`, and the video track is dropped straight away.
 - **Capture.** An AudioWorklet runs on the browser's audio thread. It mixes the
   input down to mono and passes it to the page in batches of 2048 samples. The
   page keeps the last 12 seconds in a ring buffer, at the device's own sample
@@ -218,113 +281,30 @@ All in [`public/js/listener.js`](public/js/listener.js) and
   - It measures how much of the clip has sound: 100 ms windows louder than an
     RMS of 0.002 (about −54 dBFS). Clips with less than 3 seconds of sound
     aren't sent ("too quiet").
-  - It normalises the volume so the peak is at 90%, boosting at most 20×,
-    because Shazam's fingerprinter ignores quiet audio.
+  - It normalises the volume so the peak is at 90%, boosting at most 20×, so a
+    quiet recording reaches the speech model at a good level.
   - It resamples to 16 kHz with an `OfflineAudioContext` and converts to 16-bit
-    PCM, which is what both recognisers expect.
-  - It records `endedAt`, the moment the clip's last sample arrived. Music sync
-    is measured from this point (see [Keeping time](#keeping-time)).
-- **Silence and the meter.** Every batch updates "seconds since the last sound",
-  which is how the app notices a song stopping. The top-bar meter reads an
-  `AnalyserNode`: 24 bands spaced logarithmically from 60 Hz to 8 kHz, drawn
-  with `▁▂▃▄▅▆▇█`.
+    PCM, which is what the speech model expects.
+  - It records `endedAt`, the moment the clip's last sample arrived. Following
+    measures the reciter's pace from this.
+- **The meter.** The top-bar meter reads an `AnalyserNode`: 24 bands spaced
+  logarithmically from 60 Hz to 8 kHz, drawn with `▁▂▃▄▅▆▇█`.
 
-## Music mode in detail
-
-### The listening loop
-
-[`public/js/app.js`](public/js/app.js) runs a small state machine:
-**idle → searching → synced**.
-
-| Situation                       | What happens                                                        |
-| ------------------------------- | ------------------------------------------------------------------- |
-| First attempt                   | after 4 s of audio                                                  |
-| Each attempt                    | sends the last 8 s                                                  |
-| Searching                       | tries every 3 s; every 10 s after 10 misses in a row                |
-| Errors (e.g. a Shazam rate limit) | retries after 10 s, then 20, 40, and at most 60 s while they continue |
-| Synced                          | re-checks every 15 s, or 2 s after the song should end if sooner (never sooner than 3 s) |
-| Match from under 6 s of sound   | shown dimmed, confirmed 3 s later                                   |
-| Lost                            | 4 s of silence, 2 misses in a row, or 1 s past the song's end       |
-
-Only one request is in flight at a time. Pressing Sync during a request queues
-another attempt right after it. A session counter throws away any response
-that arrives after things have moved on, e.g. after a mode switch or stop.
-
-### Recognition
-
-[`lib/recognize.js`](lib/recognize.js) (shared with the Android app):
-
-- The server hands the PCM to [`shazam-api`](https://www.npmjs.com/package/shazam-api).
-  It computes Shazam's audio signature locally and sends only that signature to
-  Shazam's (unofficial) endpoint, not the audio itself.
-- Shazam answers with the track (title, artist, album, release year, artwork,
-  Apple's artwork colour palette) and `offset`: the position in the song where
-  the clip *started*. That offset is what makes syncing possible.
-- Shazam doesn't report the track's length, so the server looks it up on iTunes
-  with the Apple Music id (cached, 4 s timeout).
-- A failed request (a rate limit, an outage, a reply in an unexpected shape, or
-  no answer within 8 s) is reported as an error, and the page waits longer
-  before each retry. Asking again straight away only keeps a rate limit in place.
-- The page picks the most colourful palette entry that still reads well on a
-  dark background, and uses it as the accent colour.
-
-### Lyrics
-
-[`lib/lyrics.js`](lib/lyrics.js) uses [LRCLIB](https://lrclib.net), a free
-synced-lyrics database that needs no API key.
-
-- It searches by title and artist. If that finds nothing, it retries with a bare
-  title and the first artist. Shazam's names are often decorated
-  ("Song (feat. X) [Remastered]", "A, B & C") where LRCLIB's aren't.
-- It picks synced lyrics over plain ones, then the release whose length is
-  closest to the iTunes length. A radio edit and an album version have
-  different timings, so the right release matters.
-- LRC lines like `[01:02.50][02:10.00] text` are parsed into
-  `{ time, text }` pairs (one line can carry several time tags), and metadata
-  tags like `[ar:Artist]` are skipped.
-- Results are cached in memory for as long as the server runs.
-
-### Keeping time
-
-When a match comes back, the app stores an anchor:
-
-```
-songPos = offset + clip length          (where the song was when the clip ended)
-at      = clip.endedAt
-position now = songPos + (now − at) + your lyric nudge
-```
-
-Measuring from when the clip *ended*, rather than when the answer arrived,
-cancels out the time spent uploading, fingerprinting and waiting for Shazam.
-
-On every animation frame, the app finds the lyric line for the current position
-(binary search), highlights it and scrolls it to the centre. A line too tall to
-fit is shown from its top instead.
-
-Each re-check compares Shazam's position with the running clock. A drift over
-0.3 s re-anchors the clock (which also catches seeking), and a different song
-starts over with the new one. The Sync button re-anchors even when the drift is
-smaller.
-
-Short clips have a catch: with 4 seconds of sound or less, Shazam sometimes
-matches the right song at the wrong repeat of a riff. In a Get Lucky test it was
-16.5 s off. So a match from under 6 seconds of sound is shown dimmed and checked
-again 3 seconds later.
-
-## Quran mode in detail
+## Finding the ayah
 
 ### The flow
 
-- Switching to Quran mode calls `POST /api/quran/warmup`, so the speech model
-  and the Quran index are loaded before the first check. The footer says so
-  while that happens.
+- Opening the page calls `POST /api/quran/warmup`, so the speech model and the
+  Quran index are loaded before the first check. The footer says so while that
+  happens.
 - **Listen & sync** makes its first attempt after 4 s, then one every second.
   Checks run locally, so there's no rate limit to respect. Each sends the last
   8 s of audio.
 - Each answer is one of three things:
   - **no match:** keep listening;
   - **ambiguous:** show the best guess dimmed and keep listening;
-  - **a clear match:** show it and turn the microphone off.
+  - **a clear match:** show it and turn the microphone off (or, with Follow,
+    carry on following).
 - After 60 s without a clear match it stops. If it had an ambiguous guess, it
   keeps that guess.
 - **Listen & sync again** keeps the surah on screen and sends the first word of
@@ -381,9 +361,9 @@ spelling differences don't matter:
   `ئ` becomes `ي`, and `ء` is dropped;
 - anything that isn't an Arabic letter becomes a space.
 
-The index lays all 6,236 ayahs out as one sequence of about 77,800 words. It
-knows which ayah each word belongs to, where each ayah starts, and every
-position of every distinct word.
+The index lays all 6,236 ayahs out as one sequence of 77,797 words. It knows
+which ayah each word belongs to, where each ayah starts, and every position of
+every distinct word.
 
 ### Finding the passage
 
@@ -403,13 +383,16 @@ position of every distinct word.
    have to line up. A match made only of Basmala words is rejected, since the
    Basmala opens nearly every surah and says nothing about where you are.
 4. **Prefer your place.** If `near` was sent, alignments that end between 30
-   words before it and 400 words after it get a +2.5 bonus.
+   words before it and 400 words after it get a +2.5 bonus, and the match is
+   marked `continues`.
 5. **Flag doubt.** If a different passage (further away than the transcript's
    length) scores within 2 points of the best, about one word's worth, the
    match is marked `ambiguous`.
 
 The answer is the ayah containing the **last** matched word, which is where the
-reciter is now.
+reciter is now. It also gives that word's place in the whole Quran (`word`)
+and the place of the ayah's last word (`ayahEnd`). When the two are the same,
+the reciter has just finished the ayah.
 
 ### Accuracy
 
@@ -427,8 +410,7 @@ was checked against quran.com's per-verse timestamps.
 The three wrong ones were phrases that really do repeat. For example, 18:56
 "وَمَا نُرْسِلُ الْمُرْسَلِينَ إِلَّا مُبَشِّرِينَ وَمُنذِرِينَ" is word for word
 6:48, and the end of 18:110, "أَنَّمَا إِلَٰهُكُمْ إِلَٰهٌ وَاحِدٌ", also appears
-in 21:108 and 41:6.
-Music played into Quran mode finds nothing.
+in 21:108 and 41:6. Music played into it finds nothing.
 
 In a browser test that fed recitation to a fake microphone, **Listen & sync**
 found the ayah 5–7 seconds after it was pressed.
@@ -504,15 +486,108 @@ breath, and where to start again (*waqaf dan ibtida'*). That guide is the
 publisher's own editorial work and isn't available as open data, so the app
 shows only the standard waqf signs.
 
-### Why it doesn't follow along live
+## Following the reciter
 
-An earlier version kept listening and moved the highlight by itself. But a
-recitation has no timeline: every reciter has their own pace and pauses, and a
-check only knows the last word it heard. So the highlight trailed the reciter
-by 3–4 seconds. Predicting ahead from the reciter's pace got it onto the right
-ayah 93–94% of the time, but it was still guessing, with the microphone always
-on. Finding the place once and letting you step through is simpler, never runs
-ahead of you, and keeps the microphone off.
+A recitation has no timeline to sync to: every reciter has their own pace and
+pauses, and a check only knows the last word it heard. Following is a loop in
+[`public/js/app.js`](public/js/app.js), with the decisions in
+[`public/js/follow.js`](public/js/follow.js).
+
+### When to check
+
+Each check costs a transcription (0.7–1.3 s of CPU), so they're spaced out by
+how soon the reciter should finish the ayah on screen:
+
+- **Pace.** Each match that continues from the last one gives a pace: words
+  moved ÷ seconds between the two clips, pauses included. The app keeps a
+  running average that forgets over about 15 seconds, starting from 0.8 words
+  a second. In the test recitations below, the pace ran from 0.34 words a
+  second (Husary in Ar-Rahman, Abdul Basit's mujawwad An-Naba) to 1.19
+  (Shuraim in Al-Kahf).
+- **Wait.** The next check is due when the reciter should have said the ayah's
+  remaining words plus one more, at that pace. The extra word is there because
+  the speech model only writes a word once it has heard all of it. The wait
+  is kept between the two settings, 2 and 5 seconds by default. So a short
+  ayah gets a check every 2 seconds, while early in a long ayah the checks are
+  5 seconds apart and get closer as the reciter nears its end.
+- **Searching** checks every second: before the reciter is found, and while
+  what it heard could be more than one place.
+
+### What a check does
+
+- **The reciter finished the ayah.** When the last word heard is the ayah's
+  last word, the highlight moves to the next ayah straight away. Waiting
+  instead for a check to hear the next ayah's first words would leave it a few
+  seconds behind every time; this is the biggest single gain in the tests
+  below.
+- **A match further on** moves the highlight there, and updates the pace.
+- **A match elsewhere** that isn't ambiguous means the reciter jumped, so it
+  goes there. One that's ambiguous and doesn't continue from the last place is
+  ignored: a reciter repeating a phrase that also appears elsewhere is far more
+  likely than a jump.
+- **No match.** Nothing moves. After 12 seconds without placing the reciter,
+  the verses dim. After 60 seconds, it stops.
+
+Each check sends the last word heard as `near`, so `locate()` prefers the
+passage that carries on from it.
+
+### How well it keeps up
+
+<!-- follow results -->
+
+## Reading the translation aloud
+
+### In the browser
+
+[`public/js/speech.js`](public/js/speech.js) wraps the Web Speech API's
+`speechSynthesis`:
+
+- `voices()` waits for the voice list, which Chrome fills in a moment after
+  the page loads.
+- `speak()` resolves `true` when the text has been said and `false` when it was
+  stopped. It reports each word as it's said, from the voice's `boundary`
+  events.
+
+[`public/js/reader.js`](public/js/reader.js) reads an ayah's translation:
+
+- **Voice.** The one picked in the settings, else the device's default for the
+  language, else the first that fits. English takes `en-US`, then any `en`.
+  Malay takes `ms-MY`, `ms`, then `id-ID` and `id`.
+- **Pieces.** Chrome stops some voices (Google's online ones) after about 15
+  seconds of speech. So a long translation is said in pieces of about 160
+  characters (fewer below 1×), split at the end of a sentence, clause or word.
+  A change of speed or voice says the current piece again.
+- **Word highlight.** The word being said is marked with the
+  [CSS Custom Highlight API](https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API)
+  (`::highlight(spoken)`), so the translation's text is never re-rendered, and
+  it's scrolled into view if it isn't already. Not every voice reports words.
+  Without them, only the ayah is marked as being read.
+
+`readAloud()` in `app.js` runs the loop. On its own it reads ayah after ayah to
+the end of the surah. While following, it reads the ayah the reciter is on.
+When it finishes, it either jumps to where the reciter has got to, or waits
+for the next ayah to start.
+
+With the microphone as the source, the checks don't run while the voice is
+speaking. Afterwards they send only the audio recorded since it stopped, once
+there's at least 4 seconds of it. That time doesn't count towards the 12 s
+"can't hear the reciter" or the 60 s give-up timers either. **keep listening
+while reading** turns all of that off, for headphones.
+
+### In the Android app
+
+Android's WebView has no `speechSynthesis`. So the app swaps in
+[`app/src/speech.js`](app/src/speech.js), which has the same functions but
+calls [`SpeechPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/SpeechPlugin.java),
+built on Android's `TextToSpeech`:
+
+- `voices` lists the installed voices of the phone's speech engine (usually
+  Google's). Voices that still need downloading are left out.
+- `speak` uses the chosen voice, or falls back to the language, and reports
+  each word from `onRangeStart` where the engine supports it (Android 8 and
+  later).
+- `stop` resolves the reading in progress as stopped, even with engines that
+  don't say so themselves.
 
 ## The server
 
@@ -522,15 +597,14 @@ ahead of you, and keeps the microphone off.
 
 | Request                                    | Sends                                        | Returns |
 | ------------------------------------------ | -------------------------------------------- | ------- |
-| `POST /api/recognize`                      | 16 kHz mono s16le PCM, at most 12 s          | `{ match }`: `{ id, title, artist, album, year, coverArt, palette, shazamUrl, duration, offset }` or `null` |
-| `GET /api/lyrics`                          | `title`, `artist`, optional `album`, `duration` | `{ lyrics }`: `{ instrumental, synced: [{ time, text }], plain, source }` or `null` |
 | `POST /api/quran/warmup`                   | nothing                                      | `{ ready: true }` once the model and index are loaded |
-| `POST /api/quran/recognize?near=N`         | PCM as above; `near` is optional             | `{ match: { surah, ayah, word, score, ambiguous } or null, transcript }` |
-| `GET /api/quran/surah/:n?translation=en`   | `translation`: `en`, `ms` or `none`          | `{ surah: { number, name, englishName, englishNameTranslation, revelationType, basmala, verses: [{ number, text, segments, translation, firstWord }] } }`; `segments` are `[text, colour]` pieces (see Tajweed colours), and `basmala` is the same, or `null` for Al-Fatiha and At-Tawbah |
+| `POST /api/quran/recognize?near=N`         | 16 kHz mono s16le PCM, at most 12 s; `near` (a word's place in the whole Quran) is optional | `{ match: { surah, ayah, word, ayahEnd, score, ambiguous, continues } or null, transcript }` |
+| `GET /api/quran/surah/:n?translation=en`   | `translation`: `en`, `ms` or `none`          | `{ surah: { number, name, englishName, englishNameTranslation, revelationType, basmala, verses: [{ number, text, segments, translation, firstWord, words }] } }`; `segments` are `[text, colour]` pieces (see Tajweed colours), `basmala` is the same, or `null` for Al-Fatiha and At-Tawbah, and `firstWord` / `words` place each ayah in the index |
 | any other `GET`                            |                                              | a file from `public/` |
 
-Errors come back as `{ error }`: 400 for missing parameters, 404, 413 for clips
-over 12 s, and 502 when an outside service fails.
+Errors come back as `{ error }`: 404 for an unknown route or surah, 405, 413
+for clips over 12 s, and 502 for anything else, such as the Quran text failing
+to download.
 
 ### http and https on one port
 
@@ -557,42 +631,45 @@ machine's hostname, `127.0.0.1` and every LAN IPv4 address, and saves it in
 
 | Variable   | Default            | Meaning                                                     |
 | ---------- | ------------------ | ----------------------------------------------------------- |
-| `PORT`     | `3000`             | port for both http and https                                |
+| `PORT`     | `3001`             | port for both http and https                                |
 | `HOST`     | `0.0.0.0`          | `127.0.0.1` keeps it local-only                             |
 | `DATA_DIR` | the project folder | where `certs/` and `.cache/` (model, Quran text) are kept   |
 
 ## What leaves your machine
 
-- **Music mode:** the server sends Shazam the audio *fingerprint*, not the
-  audio. It sends iTunes the Apple Music id, and LRCLIB the title, artist,
-  album and length. The browser loads cover art from Apple's servers.
-- **Quran mode:** the audio is transcribed on your server and goes nowhere
+- **Recognition:** the audio is transcribed on your server and goes nowhere
   else. The model (from Hugging Face) and the Quran text (from alquran.cloud
   and quran.com) are each downloaded once.
+- **Reading aloud:** the device's voice is given the translation text, never
+  the audio. Most voices run on the device. A few are online, such as Chrome's
+  "Google …" voices on a computer and Edge's "Online (Natural)" voices, and
+  they send the text to Google or Microsoft. Pick another voice in the
+  settings if that matters to you.
 - **Always:** audio from a phone goes to your server over https on your own
   network. The Arabic font comes with the app.
-- **Android app:** the same services, called from the phone itself. Audio
-  never leaves the phone.
+- **Android app:** the same downloads, made from the phone itself. Audio never
+  leaves the phone.
 
 ## Home Assistant add-on
 
-[`homeassistant/sound_finder/`](homeassistant/sound_finder/) packages the server
+[`homeassistant/quran_finder/`](homeassistant/quran_finder/) packages the server
 as a local add-on.
 
 ### Installing
 
-1. Run `npm run addon`. This builds `dist/sound_finder/`: the add-on files
+1. Run `npm run addon`. This builds `dist/quran_finder/`: the add-on files
    together with the app.
 2. Copy that folder into Home Assistant's `addons` share. Use the **Samba
    share** add-on (`\\<home-assistant>\addons`) or **Advanced SSH & Web
    Terminal**.
 3. Go to **Settings → Add-ons → Add-on store → ⋮ → Check for updates**, open
-   **Sound Finder** under *Local add-ons*, then install and start it.
-4. Open `https://<home-assistant-ip>:3000` on your phone and accept the
+   **Quran Finder** under *Local add-ons*, then install and start it.
+4. Open `https://<home-assistant-ip>:3001` on your phone and accept the
    certificate warning once.
 
 To update later, copy the new folder over the old one and press **Rebuild** on
-the add-on's page.
+the add-on's page. It uses port 3001, so it can run beside the Sound Finder
+add-on.
 
 ### A dashboard button
 
@@ -600,11 +677,11 @@ Edit a dashboard → **Add card** → **Manual**:
 
 ```yaml
 type: button
-name: Sound Finder
-icon: mdi:music-circle-outline
+name: Quran Finder
+icon: mdi:book-open-variant
 tap_action:
   action: url
-  url_path: https://192.168.1.179:3000   # your Home Assistant's IP
+  url_path: https://192.168.1.179:3001   # your Home Assistant's IP
 ```
 
 It opens the app in the browser, not inside Home Assistant. A Home Assistant
@@ -624,37 +701,52 @@ often can't open `.local` names.
   UI** button links to it.
 - **Storage:** `DATA_DIR=/data`, the add-on's persistent storage. The
   certificate survives restarts and updates, so each phone only accepts the
-  warning once. The model downloads there the first time Quran mode is used.
-- **Resources:** about 1.3 GB of RAM once the Quran model is loaded, and about
-  1.3 s per check on 2 CPU cores. In a Proxmox VM, set the CPU type to `host`;
-  the default type hides newer instructions such as AVX2.
+  warning once. The model downloads there the first time it's needed.
+- **Resources:** about 1.3 GB of RAM once the model is loaded, and about 1.3 s
+  per check on 2 CPU cores. **Follow** keeps those cores busy for a few seconds
+  in every five or so, for as long as it's on. In a Proxmox VM, set the CPU type
+  to `host`; the default type hides newer instructions such as AVX2.
+- **Voices:** reading aloud uses the voices of the phone or computer the page
+  is open on, not the add-on.
 
 ## Android app
 
 [`app/`](app/) packages the same page as an Android app with
 [Capacitor](https://capacitorjs.com). It needs no server: the work the server
-does happens on the phone.
+does happens on the phone. Its id is `io.github.fardanrashidi.quranfinder`, so
+it installs beside the sound-finder app.
 
-- **Music:** the phone computes the Shazam fingerprint and sends it to Shazam
-  itself. Shazam doesn't allow requests from web pages, so that one request goes
-  through Android's own HTTP stack. iTunes and LRCLIB are called directly.
-- **Quran:** the same speech model runs on the phone, in native code with ONNX
-  Runtime ([`Whisper.java`](app/android/app/src/main/java/io/github/fardanrashidi/soundfinder/Whisper.java)). It downloads from Hugging Face
-  the first time (164 MB, with progress shown), then works offline. So does the Quran text, which is kept
-  after the first download.
+- **Speech to text:** the same speech model runs on the phone, in native code
+  with ONNX Runtime
+  ([`Whisper.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/Whisper.java)).
+  It downloads from Hugging Face the first time (164 MB, with progress shown),
+  then works offline. So does the Quran text, which is kept after the first
+  download.
+- **Reading aloud:** Android's own text-to-speech, through
+  [`SpeechPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/SpeechPlugin.java)
+  (see [In the Android app](#in-the-android-app)).
+- **Screen on:** [`ScreenPlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/ScreenPlugin.java)
+  sets `FLAG_KEEP_SCREEN_ON` while it's listening or reading.
 - **Microphone only:** phones can't capture another app's audio.
 - **Back button:** it closes the settings panel first, and leaves the app only
-  when nothing is open ([`MainActivity.java`](app/android/app/src/main/java/io/github/fardanrashidi/soundfinder/MainActivity.java)).
+  when nothing is open ([`MainActivity.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranfinder/MainActivity.java)).
   The status bar's icons switch between light and dark with the theme.
+
+On the Android emulator, with the eSpeak NG engine, the speech plugin listed
+the voices (Malay included), read a translation through to the end, stopped
+part-way when asked, and let a new reading cut off the one before. Keeping the
+screen on set and cleared the window flag. eSpeak NG doesn't report words, so
+the word highlight there was missing. The emulator's own Google voices were
+missing their voice data, so they couldn't be tried.
 
 ### Speed
 
-The Quran check is the slow part. Android's WebView can't be cross-origin
-isolated, so WebAssembly there gets one thread. The app therefore runs the model
-in native code, which can use several cores, and uses the smaller version of
-it (8-bit encoder, 4-bit decoder).
+The check is the slow part. Android's WebView can't be cross-origin isolated,
+so WebAssembly there gets one thread. The app therefore runs the model in
+native code, which can use several cores, and uses the smaller version of it
+(8-bit encoder, 4-bit decoder).
 
-| Quran speech-to-text, one 8 s clip                    | Time        |
+| Speech-to-text, one 8 s clip                          | Time        |
 | ----------------------------------------------------- | ----------- |
 | Server (Ryzen 7 5800X3D, full model)                  | 0.7 s       |
 | The app's engine on the same PC (4 threads)           | 0.46 s      |
@@ -667,9 +759,6 @@ transformers.js does. With the same model files, its transcripts match
 transformers.js's on all 137 test clips, so accuracy is the same as the
 server's (128 right, 4 right but flagged as uncertain, 3 wrong and flagged,
 2 no match).
-
-Music isn't affected: on the emulator, Shazam answered in about 1 s and LRCLIB
-in about 2 s.
 
 ### Building
 
@@ -684,10 +773,12 @@ npm run app:apk   # → app/android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 `npm run app` alone rebuilds the web content and copies it into the Android
-project. It runs [`app/build.mjs`](app/build.mjs), which copies `public/`,
-and replaces `js/api.js` with [`app/src/api.js`](app/src/api.js) (bundled
-with esbuild). Then `cap sync` copies the result into the Android project.
-Gradle adds ONNX Runtime's Android library, which is most of the APK's 34 MB.
+project. It runs [`app/build.mjs`](app/build.mjs), which copies `public/` and
+replaces `js/api.js` and `js/speech.js` with
+[`app/src/api.js`](app/src/api.js) and [`app/src/speech.js`](app/src/speech.js)
+(bundled with esbuild). Then `cap sync` copies the result into the Android
+project. Gradle adds ONNX Runtime's Android library, which is most of the
+APK's 34 MB.
 
 ### Installing on your phone
 
@@ -696,8 +787,9 @@ Gradle adds ONNX Runtime's Android library, which is most of the APK's 34 MB.
 - **Without a cable:** copy the APK to the phone and open it. Android asks you
   to allow installs from that app (Files, Drive, ...) once.
 
-The first time you press Listen, Android asks for the microphone. To debug the
-page, open `chrome://inspect` on the PC while the phone is plugged in.
+The first time you press Listen & sync or Follow, Android asks for the
+microphone. To debug the page, open `chrome://inspect` on the PC while the
+phone is plugged in.
 
 ## Performance
 
@@ -705,25 +797,22 @@ Measured on a Ryzen 7 5800X3D unless noted.
 
 | What                                           | Time / size                                    |
 | ---------------------------------------------- | ---------------------------------------------- |
-| Music: from Listen to song shown               | about 5 s                                      |
-| Shazam round trip                              | about 1 s                                      |
-| Quran: speech-to-text, one 8 s clip            | 0.7–0.8 s (16 threads); 1.3 s limited to 2 cores |
-| Quran: from Listen & sync to ayah shown        | 5–7 s                                          |
+| Speech-to-text, one 8 s clip                   | 0.7–0.8 s (16 threads); 1.3 s limited to 2 cores |
+| From Listen & sync to ayah shown               | 5–7 s                                          |
+| Checks a minute                                | about 35 while searching; about 11 while following |
 | Loading the cached speech model                | about 1 s                                      |
-| Server memory                                  | ~120 MB; ~1.3 GB with the Quran model loaded   |
-| Downloads on first Quran use                   | 383 MB model, 4.4 MB text                      |
+| Server memory                                  | ~120 MB; ~1.3 GB with the model loaded         |
+| Downloads on first use                         | 383 MB model, 4.4 MB text                      |
 
 ## Project layout
 
 ```
-lib/              shared by the server and the Android app
-  recognize.js    Shazam recognition + iTunes track length (swap for a licensed provider later)
-  lyrics.js       LRCLIB search, choosing the right release, LRC parsing
+lib/
   quran.js        Quran text download, normalisation, index, finding the passage, surah data, tajweed colours
+                  (shared by the server and the Android app)
 server/
   index.js        HTTP + HTTPS server on one port: /api routes and static files
-  recognize.js    turns uploaded clips into samples for lib/recognize.js
-  asr.js          Quran speech-to-text (Whisper via transformers.js)
+  asr.js          speech-to-text (Whisper via transformers.js)
   quran.js        lib/quran.js with the text cached on disk
   tls.js          self-signed certificate for https on the LAN
   paths.js        where the certificate and downloads go (DATA_DIR)
@@ -731,25 +820,31 @@ public/
   index.html      the page
   style.css       terminal look, Arabic typography, mobile layout
   fonts/          KFGQPC Uthmanic Script Hafs, the Arabic font
-  js/app.js              state machine: when to listen, what to show, controls
+  js/app.js              state machine: when to listen, what to show, reading aloud, controls
+  js/follow.js           following: where the reciter is, the pace, when to check next
   js/listener.js         audio capture, ring buffer, clips, level meter
   js/capture-worklet.js  audio-thread capture (mono mixdown)
-  js/lyrics-view.js      lyrics and verse rendering, highlighting, scrolling
+  js/verses-view.js      verse rendering, highlighting the ayah and the word being read, scrolling
+  js/reader.js           reading a translation aloud: voice, pieces, words
+  js/speech.js           the browser's speechSynthesis (the app swaps in app/src/speech.js)
   js/settings.js         settings: defaults, saving, change notifications
   js/settings-panel.js   the settings panel
-  js/api.js              backend calls (the app swaps in app/src/api.js)
+  js/api.js              backend calls and the screen wake lock (the app swaps in app/src/api.js)
 app/              Android app: the same page, with the server's work done on the phone
   build.mjs       npm run app → app/www/ (public/ + bundled app/src/)
-  src/api.js      public/js/api.js's functions, run locally (native HTTP for Shazam, status bar style)
-  src/asr.js      Quran speech-to-text, through WhisperPlugin
-  android/        Capacitor's Android project; in app/src/main/java/…/soundfinder/:
-    Whisper.java        the Quran speech model, with ONNX Runtime
+  src/api.js      public/js/api.js's functions, run locally (plus status bar style and keeping the screen on)
+  src/asr.js      speech-to-text, through WhisperPlugin
+  src/speech.js   public/js/speech.js's functions, through SpeechPlugin
+  android/        Capacitor's Android project; in app/src/main/java/…/quranfinder/:
+    Whisper.java        the speech model, with ONNX Runtime
     WhisperPlugin.java  downloads the model, takes calls from the page
-    MainActivity.java   registers the plugin, sends Back to the page first
+    SpeechPlugin.java   Android text-to-speech: voices, speak, stop, word events
+    ScreenPlugin.java   keeps the screen on
+    MainActivity.java   registers the plugins, sends Back to the page first
 capacitor.config.json  app id and where the Android project lives
 homeassistant/
-  sound_finder/   add-on: config.yaml, Dockerfile, DOCS.md
-  build.sh        npm run addon → dist/sound_finder/ (add-on + app, ready to copy)
+  quran_finder/   add-on: config.yaml, Dockerfile, DOCS.md
+  build.sh        npm run addon → dist/quran_finder/ (add-on + app, ready to copy)
 ```
 
 Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
@@ -757,46 +852,38 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 
 ## Limitations
 
-- **Shazam's endpoint is unofficial.** It can change, break or rate-limit at any
-  time. There's no backup service: AudD is the only one that works without an
-  account, and in a test on 8 clips from Apple's song previews it named the right
-  recording twice. The rest came back as remixes, DJ mixes or unrelated uploads.
-  Even when it was right, its position was 13 s off, too far for synced lyrics.
-- **Lyrics are only as good as LRCLIB.** Some songs have no synced lyrics, or
-  timings that are slightly off (the lyrics − / + control is for those).
+- **Room noise is untested.** Testing used clean recordings fed straight in, not
+  a real microphone in a noisy room.
+- **It needs a few seconds of clear recitation.** The Basmala alone can't place
+  you. A passage that repeats many times (like the refrain of Ar-Rahman) may
+  take longer to settle.
+- **Following moves ayah by ayah**, not word by word, and it can only know
+  where the reciter was at the end of the last clip. When the reciter starts
+  an ayah without the previous one's end being heard, the highlight gets
+  there a couple of seconds late.
+- **Reading aloud through a speaker** pauses Follow's checks while the voice
+  speaks, so a fast reciter can get ahead and some ayahs go unread. Headphones
+  with **keep listening while reading** avoid that.
+- **The word highlight** depends on the voice reporting its words. Some don't
+  (eSpeak NG on Android, for one), and then only the ayah is marked.
+- **You can't open a surah by hand.** Reading aloud and the ayah buttons work
+  on the surah a recitation found.
 - **Tab audio** only works in Chromium-based browsers.
 - **Certificate warnings:** each device sees one, because the certificate is
   self-signed.
-- **Room noise is untested.** Testing used clean recordings fed straight in, not
-  a real microphone in a noisy room.
-- **Quran mode needs a few seconds of clear recitation.** The Basmala alone
-  can't place you. A passage that repeats many times (like the refrain of
-  Ar-Rahman) may take longer to settle. It highlights whole ayahs, not
-  individual words.
 - **Memory:** the speech model needs about 1.3 GB of RAM once loaded.
-
-## Before turning this into a real app
-
-- **Recognition licensing.** Fine for a personal project, but Shazam's endpoint
-  isn't allowed in a published product. Use a licensed service such as ACRCloud
-  instead (AudD did poorly in testing, see Limitations); only
-  `lib/recognize.js` needs to change.
-- **GPL.** `shazam-api` is GPL-2.0. Dropping it along with the Shazam endpoint
-  also drops that obligation.
-- **iPhone.** The Capacitor project could get an iOS side too, but building it
-  needs a Mac with Xcode, and `Whisper.java` would need a Swift version.
+- **iPhone:** the Capacitor project could get an iOS side too, but building it
+  needs a Mac with Xcode, and `Whisper.java`, `SpeechPlugin.java` and
+  `ScreenPlugin.java` would need Swift versions. The web page works in Safari.
 
 ## Credits and licences
 
-- [`shazam-api`](https://www.npmjs.com/package/shazam-api): Shazam signature
-  generation and lookup (GPL-2.0).
 - [tarteel-ai/whisper-base-ar-quran](https://huggingface.co/tarteel-ai/whisper-base-ar-quran):
-  the Quran speech model (Apache-2.0), in YunusZJ's
+  the speech model (Apache-2.0), in YunusZJ's
   [ONNX export](https://huggingface.co/YunusZJ/whisper-base-ar-quran-ONNX).
 - [transformers.js](https://github.com/huggingface/transformers.js) and
   onnxruntime: running the model in Node and on the phone.
 - [Capacitor](https://capacitorjs.com): the Android app.
-- [LRCLIB](https://lrclib.net): synced lyrics.
 - [alquran.cloud](https://alquran.cloud): Quran text (from Tanzil), the
   tajweed-marked text, and translations.
 - [King Fahd Glorious Quran Printing Complex](https://qurancomplex.gov.sa)
@@ -807,5 +894,4 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   site wasn't reachable when this was set up, so the file comes from
   [quran.com's repository](https://github.com/quran/quran.com-frontend-next/tree/production/public/fonts/quran/hafs/uthmanic_hafs).
 - [quran.com](https://quran.com): the KFGQPC text (through its API), and
-  per-verse recitation timings used for testing.
-# quranify
+  per-verse and per-word recitation timings used for testing.
