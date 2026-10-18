@@ -1,6 +1,6 @@
 {
   "appId": "io.github.fardanrashidi.quranfinder",
-  "appName": "quran-finder",
+  "appName": "Quran Whisperer",
   "webDir": "app/www",
   "backgroundColor": "#0b0e12",
   "android": {

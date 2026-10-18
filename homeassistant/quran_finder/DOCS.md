@@ -1,4 +1,4 @@
-# Quran Finder
+# Quran Whisperer
 
 Open the web app on any phone or computer on your network:
 
@@ -15,7 +15,7 @@ Edit a dashboard → **Add card** → **Manual**, and paste:
 
 ```yaml
 type: button
-name: Quran Finder
+name: Quran Whisperer
 icon: mdi:book-open-variant
 tap_action:
   action: url
@@ -34,9 +34,10 @@ microphone.
 - The first time it's used, the add-on downloads the speech model (~400 MB)
   into its data folder. After that it starts in a few seconds.
 - Recognition runs on Home Assistant's CPU: about 1.3 s per check on 2 cores.
-  **Listen & sync** only listens until it finds your place. **Follow** keeps
-  listening, with a check every 2–5 seconds, so it keeps those cores busier for
-  as long as it's on. Once loaded, the speech model takes about 1.3 GB of RAM,
+  **Listen** follows the reciter once it finds your place, with a check every
+  2–5 seconds, so it keeps those cores busy for as long as it's on. Turn
+  *follow the reciter* off in the settings, and it stops listening once it has
+  found the place. Once loaded, the speech model takes about 1.3 GB of RAM,
   so give the VM at least 1.5 GB more than Home Assistant already uses.
 - Reading the translation aloud uses the voices of the phone or computer the
   page is open on, not the add-on.

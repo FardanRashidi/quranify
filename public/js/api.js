@@ -1,4 +1,4 @@
-// Calls to the quran-finder server. The phone app (app/) swaps this file for
+// Calls to the Quran Whisperer server. The phone app (app/) swaps this file for
 // app/src/api.js, which does the same work on the phone instead.
 // Where the backend lives. Empty means "same origin as the page".
 const API_BASE = '';

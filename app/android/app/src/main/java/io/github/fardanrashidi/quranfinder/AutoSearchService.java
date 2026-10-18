@@ -31,7 +31,7 @@ import java.util.Arrays;
  * AutoSearchActivity starts it (from the Quick Settings tile, or the app's
  * settings), and it runs until the tile or the notification's Stop turns it off.
  *
- * It does what the page's Listen & sync does, natively: the same speech model
+ * It finds the ayah the way the page's Listen does, natively: the same speech model
  * (SpeechModel) and the same search (QuranSearch, a port of lib/quran.js). It
  * checks less often, for the battery: every few seconds until it finds a surah,
  * then every 15 s, to notice the recitation moving on to another one.
@@ -183,7 +183,7 @@ public class AutoSearchService extends Service {
             QuranSearch.Match match = search.locate(SpeechModel.transcribe(this, audio, null), near);
             if (stopping) return;
             if (surah == 0) {
-                // Searching: only a clear match will do, as with Listen & sync.
+                // Searching: only a clear match will do, as with Listen.
                 if (match != null && !match.ambiguous) {
                     found(search, match, true);
                     surah = match.surah;

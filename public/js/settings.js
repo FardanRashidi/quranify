@@ -3,6 +3,9 @@
 const STORAGE_KEY = 'settings';
 
 export const DEFAULTS = Object.freeze({
+  // what Listen does once it has found the ayah
+  listenFollow: true, // keep listening, and move along with the reciter
+  listenRead: true, // read the translation aloud
   // appearance
   theme: 'dark', // dark | light | auto (follow the device)
   accent: '', // '#rrggbb', or '' for the theme's own

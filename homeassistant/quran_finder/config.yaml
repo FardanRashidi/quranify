@@ -1,5 +1,6 @@
-name: Quran Finder
+name: Quran Whisperer
 version: "1.0.0"
+# The slug stays quran_finder, the name it was first installed under: a new one would make it a different add-on.
 slug: quran_finder
 description: Find the surah and ayah of a Quran recitation, follow the reciter, and hear the translation read aloud.
 arch:

@@ -1,20 +1,25 @@
-# quran-finder
+# Quran Whisperer
 
 A web app that listens to a Quran recitation, works out the surah and ayah, and
 shows the verses with an English or Malay translation.
 
-- **Listen & sync** finds where the reciter is, highlights that ayah, and turns
-  the microphone off. You move on through the verses yourself.
-- **Follow** keeps listening and moves the highlight from ayah to ayah as the
-  reciter goes. It checks more often as the reciter nears the end of an ayah:
-  every 2 seconds then, and up to 5 seconds apart early in a long one.
-- **Read aloud** reads the translation in the device's own voice, a word
-  highlighted at a time. It reads either through the surah on its own, or
-  ayah by ayah along with the reciter while following.
-- The screen stays on while it's listening or reading.
-- **Auto search** (Android app): a Quick Settings tile that keeps listening in
-  the background, screen off too, like Auto Shazam, and sends a notification
-  for each surah it recognises.
+It has one main button. Press **Listen**, play a recitation, and by default it:
+
+- **finds the ayah** the reciter is on and highlights it;
+- **follows the reciter**, moving the highlight from ayah to ayah as they go.
+  It checks more often as the reciter nears the end of an ayah: every 2
+  seconds then, and up to 5 seconds apart early in a long one;
+- **reads the translation aloud** in the device's own voice, a word highlighted
+  at a time, each ayah as the reciter reaches it.
+
+Following and reading aloud can each be turned off in the settings, under
+**listen button**. Then Listen just finds your place and stops listening, or
+finds it and reads on through the surah by itself.
+
+The screen stays on while it's listening or reading. The Android app also has
+**auto search**: a Quick Settings tile that keeps listening in the background,
+with the screen off too, like Auto Shazam, and sends a notification for each
+surah it recognises.
 
 It runs as a small Node server on your computer (or on Home Assistant). Any
 phone, tablet or computer on your network opens it in the browser and uses its
@@ -57,8 +62,8 @@ npm start        # → http://localhost:3001   (npm run dev restarts on changes)
 ```
 
 Open <http://localhost:3001>. The first time, the server downloads its speech
-model (about 400 MB). Then press **Listen & sync** or **Follow**, allow the
-microphone, and play a recitation.
+model (about 400 MB). Then press **Listen**, allow the microphone, and play a
+recitation.
 
 ### From your phone or another computer
 
@@ -82,36 +87,57 @@ needs Home Assistant OS or Supervised. See
 
 ## Using it
 
-The top bar has the audio source, the [settings](#settings) button, **Follow**
-and **Listen & sync**. A live level meter shows what the app hears. Once a
-surah is found, its name sits above the verses with the **read aloud** button
-and its speed. The footer shows the status, the ayah controls, the translation
-and the tajweed switch.
+The top bar has the audio source, the [settings](#settings) button and
+**Listen**. A live level meter shows what the app hears. Once a surah is found,
+its name sits above the verses with the **read aloud** button and its speed.
+The footer shows the status, the ayah controls (with **sync**, which does what
+Listen does, within reach of a thumb), the translation and the tajweed switch.
 
 The server starts loading its speech model as soon as the page opens. The
 first time ever, that's a 400 MB download, which takes a minute; the footer
 shows its progress.
 
-### Finding your place: Listen & sync
+### Listen
 
-1. Press **Listen & sync** (or Space) and play a recitation. It listens until
-   it knows where the reciter is, usually 5–7 seconds. Then it shows the surah,
-   highlights the ayah, and turns the microphone off.
-2. Move through the verses yourself with **− / +** in the footer, `[` `]`, the
-   arrow keys, or by tapping a verse.
-3. Lost your place, or did the reciter jump? Press **sync** next to the ayah
-   buttons (or **Listen & sync** again). The surah stays on screen while it
-   listens, and it prefers matches that continue from where you are.
+1. Press **Listen** (or Space) and play a recitation. It listens until it knows
+   where the reciter is, usually 5–7 seconds. Then it shows the surah and
+   highlights the ayah.
+2. By default, it then [follows the reciter](#following-along) and
+   [reads each ayah's translation aloud](#hearing-the-translation-read-aloud)
+   as they reach it.
+3. Press **Stop** (or Space) to stop listening and reading.
+
+What it does once it has found the ayah is up to the **listen button** section
+of the settings:
+
+| follow the reciter | read the translation aloud | Listen…                                                               |
+| ------------------ | -------------------------- | --------------------------------------------------------------------- |
+| on (default)       | on (default)               | finds the ayah, follows the reciter, and reads each ayah as they reach it |
+| on                 | off                        | finds the ayah and follows the reciter                                |
+| off                | on                         | finds the ayah, turns the microphone off, and reads on through the surah |
+| off                | off                        | finds the ayah and turns the microphone off                           |
+
+In a browser test with Ya-Sin playing into a fake microphone, one press of
+Listen found 36:4 after 11 s and started reading its translation straight
+away. It then followed the reciter on to 36:8, and read 36:7 as they reached it.
+
+### Finding your place
+
+- Move through the verses yourself with **− / +** in the footer, `[` `]`, the
+  arrow keys, or by tapping a verse.
+- Lost your place, or did the reciter jump? Press **sync** next to the ayah
+  buttons (or **Listen** again). The surah stays on screen while it listens,
+  and it prefers matches that continue from where you are.
 
 Some phrases appear word for word in more than one place in the Quran. If what
 it heard could be either, it shows its best guess dimmed and keeps listening
 until the reciter says something that settles it. It gives up after 60 seconds
 without a match.
 
-### Following along: Follow
+### Following along
 
-1. Press **Follow** (or `F`). It searches the same way, but once it has found
-   the reciter it keeps listening. The highlight moves to each new ayah as the
+1. With **follow the reciter** on (the default), Listen keeps listening once
+   it has found the reciter. The highlight moves to each new ayah as the
    reciter reaches it, and the page scrolls along with it.
 2. How often it checks depends on how soon the reciter should finish the
    ayah, at the pace they've been going. Near the end it checks every 2
@@ -124,9 +150,10 @@ without a match.
 4. If it can't place the reciter for 12 seconds (a long pause, noise, or a
    passage it can't tell apart from another), the verses dim and it keeps
    listening. After 60 seconds without placing them, it stops.
-5. Press **Follow** again, **Stop**, or Space to stop. Pressing **Follow**
-   while **Listen & sync** is still searching makes it carry on following once
-   it finds the place.
+5. Press **Stop** or Space to stop. The `F` key starts following whatever the
+   setting says, and stops it when pressed again. Pressed while Listen is
+   still searching with following off, it carries on following once it finds
+   the place.
 
 If you scroll yourself, the auto-scroll pauses for 4 seconds. You can still
 step or tap to another ayah, but the next check moves the highlight back to the
@@ -136,22 +163,23 @@ well it keeps up.
 
 ### Hearing the translation: read aloud
 
-1. With a surah on screen, press the speaker button above the verses (or `T`).
-   It reads the translation of the highlighted ayah, highlighting each word as
-   it's said, then moves to the next ayah and carries on to the end of the
-   surah. Press it again to stop.
+1. With **read the translation aloud** on (the default), Listen starts reading
+   as soon as it's sure of the ayah. You can also press the speaker button
+   above the verses (or `T`) whenever a surah is on screen. It reads the
+   translation of the highlighted ayah, highlighting each word as it's said.
+   Without following, it then moves to the next ayah and carries on to the end
+   of the surah. Press it again to stop reading and keep listening.
 2. The **1×** button next to it steps through 0.75, 1, 1.25, 1.5 and 2× speed.
    The settings have a slider from 0.5× to 2×, and a choice of voice. Changing
    either one says the current sentence again.
 3. **− / +**, the arrow keys, or tapping a verse reads from there instead.
-4. **With Follow on**, it reads each ayah as the reciter reaches it, so you
+4. **While following**, it reads each ayah as the reciter reaches it, so you
    hear the meaning of what's being recited. If the reciter has moved on by
    the time it finishes, it skips to where they are. If it finishes first, it
-   waits for the reciter to start the next ayah. Stopping Follow also stops
-   the reading.
+   waits for the reciter to start the next ayah. **Stop** stops both.
 
 The microphone would hear the voice through the speaker and get confused. So
-while it reads, Follow pauses its checks, and afterwards it only listens to
+while it reads, following pauses its checks, and afterwards it only listens to
 the audio recorded since the voice stopped. With headphones, or with tab audio
 as the source, turn on **keep listening while reading** in the settings, and it
 keeps checking the whole time.
@@ -207,21 +235,23 @@ recolour each one, and hide the key.
 
 | Key        | Does                                          |
 | ---------- | --------------------------------------------- |
-| Space      | Listen & sync / stop                          |
-| `S` or `R` | check again now (starts Listen & sync if stopped) |
-| `F`        | Follow on / off                               |
+| Space      | Listen / stop                                 |
+| `S` or `R` | check again now (starts Listen if stopped)    |
+| `F`        | listen and follow, whatever the settings say / stop |
 | `T`        | read aloud on / off                           |
 | `]` or `→` | next ayah                                     |
 | `[` or `←` | previous ayah                                 |
 
 ### Settings
 
-The **settings** button (the sliders next to Follow) opens a panel with
+The **settings** button (the sliders next to Listen) opens a panel with
 everything you can change. Changes take effect straight away and are saved in
-the browser, or in the app. Close it with ×, Esc, Back, or a tap outside it.
+the browser, or in the app. Close it with × at the top or **close** at the
+bottom, Esc, Back, or a tap outside it.
 
 | Section       | Settings |
 | ------------- | -------- |
+| listen button | what Listen does once it has found the ayah: follow the reciter (on), read the translation aloud (on) |
 | appearance    | theme (dark, light, or auto to follow the device), accent colour, level meter, animations |
 | verses        | translation; Arabic and translation text size; tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour. A sample ayah (51:21) shows the result as you go. |
 | following     | scroll along to each ayah (on); the shortest wait between checks (2 s, from 1 to 5) and the longest (5 s, from 2 to 15) |
@@ -304,17 +334,17 @@ All in [`public/js/listener.js`](public/js/listener.js) and
 - Opening the page calls `POST /api/quran/warmup`, so the speech model and the
   Quran index are loaded before the first check. The footer says so while that
   happens.
-- **Listen & sync** makes its first attempt after 4 s, then one every second.
+- **Listen** makes its first attempt after 4 s, then one every second.
   Checks run locally, so there's no rate limit to respect. Each sends the last
   8 s of audio.
 - Each answer is one of three things:
   - **no match:** keep listening;
   - **ambiguous:** show the best guess dimmed and keep listening;
-  - **a clear match:** show it and turn the microphone off (or, with Follow,
-    carry on following).
+  - **a clear match:** show it, start reading it aloud if that's on, and carry
+    on following (or, with following off, turn the microphone off).
 - After 60 s without a clear match it stops. If it had an ambiguous guess, it
   keeps that guess.
-- **Listen & sync again** keeps the surah on screen and sends the first word of
+- **Listen again** (or **sync**) keeps the surah on screen and sends the first word of
   the highlighted ayah as `near`, so passages continuing from your place win
   ties.
 - **− / +** always scroll the new ayah into view, even if you had scrolled away.
@@ -427,8 +457,8 @@ The three wrong ones were phrases that really do repeat. For example, 18:56
 6:48, and the end of 18:110, "أَنَّمَا إِلَٰهُكُمْ إِلَٰهٌ وَاحِدٌ", also appears
 in 21:108 and 41:6. Music played into it finds nothing.
 
-In a browser test that fed recitation to a fake microphone, **Listen & sync**
-found the ayah 5–7 seconds after it was pressed.
+In a browser test that fed recitation to a fake microphone, **Listen** found
+the ayah 5–7 seconds after it was pressed.
 
 ### Tajweed colours
 
@@ -585,16 +615,16 @@ Home Assistant on 2 cores plus the trip from the phone.
 | every 3 s                                      | 89.5%      | 0.5 s, 2.3 s     | 16              | 79.4%           |
 | every 5 s                                      | 81.9%      | 1.5 s, 5.5 s     | 10.5            | 70.2%           |
 | by ayah length: a third of the ayah, 2–5 s     | 86.8%      | 0.8 s, 3.6 s     | 12.6            | 76.0%           |
-| **Follow**, 2–5 s (the default)                | **89.9%**  | 0.4 s, 2.4 s     | 11.4            | 80.2%           |
-| Follow, without moving on at the ayah's end    | 65.3%      | 4.5 s, 6.1 s     | 14.4            | 52.5%           |
+| **Following**, 2–5 s (the default)             | **89.9%**  | 0.4 s, 2.4 s     | 11.4            | 80.2%           |
+| Following, without moving on at the ayah's end | 65.3%      | 4.5 s, 6.1 s     | 14.4            | 52.5%           |
 
-Follow gets within 4 points of checking every second, with a third of the
+Following gets within 4 points of checking every second, with a third of the
 checks. It's ahead of the reciter 0.6% of the time and behind 8.1%. The rest is
 the first few seconds, before it has found them. A shortest wait of 1 or 1.5 s,
 or a longest of 4 s, came out within half a point of 2–5 s; a longest of 6 s
 was 2 points worse.
 
-By recitation, with Follow's defaults:
+By recitation, with following's default 2–5 s:
 
 | Recitation               | Right ayah | With 2 s checks |
 | ------------------------ | ---------- | --------------- |
@@ -607,13 +637,13 @@ By recitation, with Follow's defaults:
 
 The fast reciters lose the most to slow checks, because they finish short ayahs
 in a couple of seconds. The rules for repeated passages and two-word matches
-came out of these tests. Before them, Follow was on the right ayah 81% of the
+came out of these tests. Before them, following was on the right ayah 81% of the
 time overall: 58% in Ar-Rahman, where the refrain kept sending it to other
 copies, and 69% in An-Naba.
 
-In the browser, with a recitation as a fake microphone, Follow found Ar-Rahman
-7.8 s after it was pressed. It then moved through 55:3 to 55:23, refrains
-included, in order. Ya-Sin went from 36:4 to 36:23 the same way.
+In the browser, with a recitation as a fake microphone, it found Ar-Rahman
+7.8 s after the button was pressed. It then followed it through 55:3 to 55:23,
+refrains included, in order. Ya-Sin went from 36:4 to 36:23 the same way.
 
 ## Reading the translation aloud
 
@@ -744,7 +774,7 @@ as a local add-on.
    share** add-on (`\\<home-assistant>\addons`) or **Advanced SSH & Web
    Terminal**.
 3. Go to **Settings → Add-ons → Add-on store → ⋮ → Check for updates**, open
-   **Quran Finder** under *Local add-ons*, then install and start it.
+   **Quran Whisperer** under *Local add-ons*, then install and start it.
 4. Open `https://<home-assistant-ip>:3001` on your phone and accept the
    certificate warning once.
 
@@ -758,7 +788,7 @@ Edit a dashboard → **Add card** → **Manual**:
 
 ```yaml
 type: button
-name: Quran Finder
+name: Quran Whisperer
 icon: mdi:book-open-variant
 tap_action:
   action: url
@@ -784,7 +814,7 @@ often can't open `.local` names.
   certificate survives restarts and updates, so each phone only accepts the
   warning once. The model downloads there the first time it's needed.
 - **Resources:** about 1.3 GB of RAM once the model is loaded, and about 1.3 s
-  per check on 2 CPU cores. **Follow** makes about 10 checks a minute, so it
+  per check on 2 CPU cores. Following makes about 10 checks a minute, so it
   keeps those cores busy about a fifth of the time, for as long as it's on. In a
   Proxmox VM, set the CPU type to `host`; the default type hides newer
   instructions such as AVX2.
@@ -871,7 +901,7 @@ APK's 34 MB.
 - **Without a cable:** copy the APK to the phone and open it. Android asks you
   to allow installs from that app (Files, Drive, ...) once.
 
-The first time you press Listen & sync or Follow, Android asks for the
+The first time you press Listen, Android asks for the
 microphone. To debug the page, open `chrome://inspect` on the PC while the
 phone is plugged in.
 
@@ -887,7 +917,7 @@ songs. Turn it on and off with its Quick Settings tile, or in the app under
 - **Android 13 and later:** *settings → auto search → Quick Settings tile →
   add*, and Android asks whether to add it.
 - **Any version:** pull Quick Settings down, tap the pencil to edit, and drag
-  **Quran Finder** in.
+  **Quran Whisperer** in.
 
 Under its name, the tile shows what it's doing: *Off*, *Downloading 40%*,
 *Listening*, or the last ayah it found, such as *Yaseen 36:13*.
@@ -905,7 +935,7 @@ Under its name, the tile shows what it's doing: *Off*, *Downloading 40%*,
   dismissed. A different surah gets a new notification, with a sound. The same
   surah counts as new again after 2 minutes without hearing it, so a dismissed
   notification comes back.
-- **Only clear matches count**, as with Listen & sync. A passage found in
+- **Only clear matches count**, as with Listen. A passage found in
   several places, like a refrain, doesn't notify until something only one
   surah has is heard.
 - It runs until you stop it from the tile, the notification or the settings.
@@ -920,7 +950,7 @@ Under its name, the tile shows what it's doing: *Off*, *Downloading 40%*,
 | After finding one       | every 15 s, to keep up with the ayah and notice a new surah                       |
 | Quiet                   | a clip with less than 3 s of sound isn't transcribed; it looks again 2 s later    |
 
-Each check transcribes the last 8 s, the same work as one Listen & sync check.
+Each check transcribes the last 8 s, the same work as one of Listen's checks.
 
 ### Battery
 
@@ -993,7 +1023,7 @@ Measured on a Ryzen 7 5800X3D unless noted.
 | What                                           | Time / size                                    |
 | ---------------------------------------------- | ---------------------------------------------- |
 | Speech-to-text, one 8 s clip                   | 0.7–0.8 s (16 threads); 1.3 s limited to 2 cores |
-| From Listen & sync to ayah shown               | 5–7 s                                          |
+| From Listen to ayah shown                      | 5–7 s                                          |
 | Checks a minute                                | about 35 while searching; about 11 while following |
 | Loading the cached speech model                | about 1 s                                      |
 | Server memory                                  | ~120 MB; ~1.3 GB with the model loaded         |
@@ -1064,11 +1094,12 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   an ayah without the previous one's end being heard, the highlight gets
   there a couple of seconds late.
 - **A slow server falls further behind.** With checks taking 2 s (Home
-  Assistant on 2 cores), Follow was on the right ayah 80% of the time instead
+  Assistant on 2 cores), following was on the right ayah 80% of the time instead
   of 90%, and 67% for Sudais's quick Ya-Sin.
-- **Reading aloud through a speaker** pauses Follow's checks while the voice
-  speaks, so a fast reciter can get ahead and some ayahs go unread. Headphones
-  with **keep listening while reading** avoid that.
+- **Reading aloud through a speaker** (on by default) pauses following's
+  checks while the voice speaks, so a fast reciter can get ahead and some ayahs
+  go unread. Headphones with **keep listening while reading** avoid that, and
+  so does turning reading aloud off under **listen button**.
 - **The word highlight** depends on the voice reporting its words. Some don't
   (eSpeak NG on Android, for one), and then only the ayah is marked.
 - **You can't open a surah by hand.** Reading aloud and the ayah buttons work

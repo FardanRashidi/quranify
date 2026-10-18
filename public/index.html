@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b0e12" />
-    <title>quran-finder</title>
+    <title>Quran Whisperer</title>
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>۞</text></svg>"
@@ -14,7 +14,7 @@
   </head>
   <body data-status="idle">
     <header class="topbar">
-      <div class="brand"><span class="dot" aria-hidden="true"></span>quran-finder</div>
+      <div class="brand"><span class="dot" aria-hidden="true"></span>quran-whisperer</div>
       <pre class="meter" id="meter" aria-hidden="true"></pre>
       <div class="controls">
         <select id="source" aria-label="Audio source">
@@ -29,8 +29,8 @@
             <circle cx="18" cy="18" r="2" />
           </svg>
         </button>
-        <button id="follow" aria-pressed="false" title="Keep listening, and follow the reciter from ayah to ayah  ( F )">Follow</button>
-        <button id="listen" class="primary" title="Listen until it finds the ayah  ( space )">Listen &amp; sync</button>
+        <!-- What it does after finding the ayah is up to the settings' "listen button" section -->
+        <button id="listen" class="primary" title="Listen and find the ayah  ( space )">Listen</button>
       </div>
     </header>
 
@@ -68,7 +68,7 @@
         <output id="ayah">–</output>
         <button id="ayah-down" title="Previous ayah  ( [ or ← )">−</button>
         <button id="ayah-up" title="Next ayah  ( ] or → )">+</button>
-        <button id="ayah-sync" title="Listen until it finds the ayah again  ( S )">sync</button>
+        <button id="ayah-sync" title="Listen again  ( S )">sync</button>
       </span>
       <span class="setting">
         <label class="setting">

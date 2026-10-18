@@ -75,7 +75,7 @@ const server = net.createServer((socket) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`quran-finder running at http://localhost:${PORT}`);
+  console.log(`Quran Whisperer running at http://localhost:${PORT}`);
   const scheme = tlsOptions ? 'https' : 'http';
   for (const ip of lanAddresses()) console.log(`  on your network:  ${scheme}://${ip}:${PORT}`);
   if (tlsOptions) console.log('  (self-signed certificate: accept the browser warning once per device)');

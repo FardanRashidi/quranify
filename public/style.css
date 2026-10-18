@@ -117,7 +117,7 @@ button.primary {
   color: var(--on-accent);
   font-weight: 700;
   /* As wide as its longest label, so switching to Stop doesn't reflow the top bar */
-  min-width: calc(13ch + 26px);
+  min-width: calc(6ch + 26px);
 }
 
 select:disabled {
@@ -716,6 +716,11 @@ input[type='color']:disabled {
   color: var(--dim);
 }
 
+.close-bottom {
+  width: 100%;
+  margin-top: 10px;
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.3;
@@ -729,7 +734,7 @@ input[type='color']:disabled {
 }
 
 @media (max-width: 640px) {
-  /* Two rows: the name and Listen, then the other controls beside the level meter */
+  /* Two rows: the name and Listen, then the audio source (if any) beside the level meter */
   .topbar {
     flex-wrap: wrap;
     gap: 0 10px;

@@ -14,6 +14,7 @@ const MAX_RETRY_AFTER_ERROR = 60;
 const MIN_AUDIBLE = 3; // seconds of actual sound a clip needs before it's worth sending
 const LOST_AFTER = 12; // following: seconds without placing the reciter before the verses dim
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2]; // what the reading speed button steps through
+const NAME = 'Quran Whisperer';
 const METER_BARS = 24;
 const METER_CHARS = ' ▁▂▃▄▅▆▇█';
 // The key above each surah, in Malay when the translation is Malay. Each waqf
@@ -49,7 +50,6 @@ const TAJWEED_KEY = {
 const $ = (id) => document.getElementById(id);
 const els = {
   source: $('source'),
-  follow: $('follow'),
   listen: $('listen'),
   meter: $('meter'),
   nowPlaying: $('now-playing'),
@@ -91,6 +91,7 @@ const state = {
   // listening
   source: 'mic', // what's being listened to: mic | tab
   following: false, // keep listening once the reciter is found, and move along with them
+  readOnFind: false, // start reading aloud once it's sure where the reciter is (Listen's "read aloud" setting)
   searchFrom: null, // word index the reader was at when they asked to sync
   listenStartedAt: 0,
   heardAt: 0, // following: when a check last placed the reciter
@@ -114,14 +115,18 @@ const state = {
 
 // --- listening loop ---------------------------------------------------------
 
-/** @param {boolean} follow keep listening once the reciter is found, and move along with them */
-async function start(follow = false) {
-  els.listen.disabled = els.follow.disabled = true;
+/**
+ * Listen: finds the ayah, then does what the settings' "listen button" section
+ * says: follows the reciter, reads the translation aloud, both (the default) or neither.
+ * @param {boolean} follow keep listening once the reciter is found, and move along with them
+ */
+async function start(follow = settings.get('listenFollow')) {
+  els.listen.disabled = true;
   state.source = canCaptureTab ? settings.get('source') : 'mic';
   try {
     await listener.start(state.source, settings.get('microphone'));
   } catch (err) {
-    els.listen.disabled = els.follow.disabled = false;
+    els.listen.disabled = false;
     setStatus('idle');
     els.status.textContent = `couldn't start: ${describeStartError(err)}`;
     return;
@@ -129,11 +134,12 @@ async function start(follow = false) {
   listener.onEnded = stop;
   state.session++;
   state.following = follow;
+  state.readOnFind = settings.get('listenRead') && !state.reading;
   state.listenStartedAt = performance.now();
   state.note = '';
   state.errors = 0;
   follower.reset();
-  els.listen.disabled = els.follow.disabled = false;
+  els.listen.disabled = false;
   els.source.disabled = true;
   renderListenButtons();
   if (state.surah) {
@@ -154,6 +160,7 @@ function stop() {
   listener.stop();
   state.session++;
   state.following = false;
+  state.readOnFind = false;
   clearTimeout(state.timer);
   state.busy = false;
   els.source.disabled = false;
@@ -162,11 +169,11 @@ function stop() {
   setStatus('idle');
 }
 
-/** Follow: listen, and keep up with the reciter until it's pressed again. */
+/** The F key: listen and follow, whatever Listen is set to do; pressed again, stop. */
 function toggleFollow() {
   if (state.following) return stop();
   if (!listener.active) return start(true);
-  // A Listen & sync under way carries on following once it's found the place.
+  // Listening that would stop once it's found the place carries on following instead.
   state.following = true;
   renderListenButtons();
 }
@@ -243,8 +250,11 @@ function onVerse(match, endedAt) {
   const moved = target.surah !== state.surah?.number || target.ayah !== state.ayah;
   if (state.surah?.number === target.surah) setAyah(target.ayah, state.following && wasFound ? 'follow' : true);
   else showSurah(target.surah, target.ayah);
+  const startsReading = state.readOnFind && !state.unsure && !state.reading;
+  if (!state.unsure) state.readOnFind = false;
+  if (startsReading) startReading();
   // Reading along: start on this ayah if the last one's done (otherwise it carries on here when it is).
-  if (moved && state.reading && (!state.following || state.readingAyah === null)) readAloud();
+  else if (moved && state.reading && (!state.following || state.readingAyah === null)) readAloud();
 
   if (state.unsure) {
     setStatus('searching');
@@ -314,7 +324,11 @@ function warmUpQuran() {
 
 function toggleReading() {
   if (state.reading) return stopReading();
-  if (!state.surah?.verses || settings.get('translation') === 'none') return;
+  if (state.surah?.verses) startReading();
+}
+
+function startReading() {
+  if (!canReadAloud || settings.get('translation') === 'none') return;
   state.reading = true;
   state.readError = '';
   readAloud();
@@ -396,8 +410,8 @@ function updateWakeLock() {
 function reset() {
   Object.assign(state, { surah: null, ayah: null, unsure: false });
   els.nowPlaying.hidden = true;
-  document.title = 'quran-finder';
-  versesView.message(listener.active ? 'listening for the recitation…' : 'press Listen & sync and play a recitation');
+  document.title = NAME;
+  versesView.message(listener.active ? 'listening for the recitation…' : 'press Listen and play a recitation');
   renderAyah();
 }
 
@@ -419,7 +433,7 @@ async function showSurah(number, ayah) {
     els.subtitle.textContent = `${surah.englishNameTranslation} · ${surah.name}`;
     els.details.textContent = `${surah.revelationType} · ${surah.verses.length} verses`;
     els.duration.textContent = String(surah.verses.length);
-    document.title = `${surah.englishName} — quran-finder`;
+    document.title = `${surah.englishName} — ${NAME}`;
     versesView.showVerses(surah, tajweedKey());
     renderTajweed();
     setAyah(state.ayah, true); // the latest match may have arrived while loading
@@ -525,9 +539,9 @@ function idleStatusText() {
     if (state.reading) return `${place} · reading the translation aloud`;
     return `${place} · − + to move · sync if you lose your place`;
   }
-  if (state.note) return `${state.note} · press Listen & sync to try again`;
+  if (state.note) return `${state.note} · press Listen to try again`;
   if (state.loadingModel && state.modelProgress) return modelLoadingText();
-  return state.surah ? 'stopped · press Listen & sync to start again' : 'idle · press Listen & sync (space), or Follow (F)';
+  return state.surah ? 'stopped · press Listen to start again' : 'idle · press Listen (space) and play a recitation';
 }
 
 function setStatus(status) {
@@ -544,10 +558,20 @@ function renderStale() {
 }
 
 function renderListenButtons() {
-  els.listen.textContent = listener.active ? 'Stop' : 'Listen & sync';
+  els.listen.textContent = listener.active ? 'Stop' : 'Listen';
   els.ayahSync.textContent = listener.active ? 'stop' : 'sync';
-  els.follow.setAttribute('aria-pressed', String(state.following));
+  const does = listenDoes();
+  els.listen.title = `Listen and ${does}  ( space )`;
+  els.ayahSync.title = `Listen again and ${does}  ( S )`;
   updateWakeLock();
+}
+
+// What Listen is set to do, for its tooltip: "find the ayah, follow the reciter and read the translation aloud"
+function listenDoes() {
+  const steps = ['find the ayah'];
+  if (settings.get('listenFollow')) steps.push('follow the reciter');
+  if (settings.get('listenRead') && canReadAloud && settings.get('translation') !== 'none') steps.push('read the translation aloud');
+  return steps.length > 1 ? `${steps.slice(0, -1).join(', ')} and ${steps.at(-1)}` : steps[0];
 }
 
 function renderAyah() {
@@ -611,10 +635,14 @@ function applySetting(key) {
     case 'followScroll':
       versesView.follow = value;
       return;
+    case 'listenFollow':
+    case 'listenRead':
+      return renderListenButtons();
     case 'translation':
       els.translation.value = value;
       if (value === 'none' && state.reading) stopReading();
       renderReading();
+      renderListenButtons();
       if (state.surah) showSurah(state.surah.number, state.ayah);
       return;
     case 'tajweed':
@@ -645,8 +673,7 @@ function setText(el, text) {
 // --- wiring -----------------------------------------------------------------
 
 els.listen.addEventListener('click', () => (listener.active ? stop() : start()));
-els.follow.addEventListener('click', toggleFollow);
-// Listen & sync again, down by the ayah buttons where a thumb can reach it
+// Listen again, down by the ayah buttons where a thumb can reach it
 els.ayahSync.addEventListener('click', () => els.listen.click());
 els.source.addEventListener('change', () => settings.set('source', els.source.value));
 els.translation.addEventListener('change', () => settings.set('translation', els.translation.value));

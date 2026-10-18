@@ -38,7 +38,7 @@ function createSelfSigned() {
     'openssl',
     [
       'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-sha256', '-days', '825',
-      '-subj', '/CN=quran-finder',
+      '-subj', '/CN=quran-whisperer',
       '-addext', `subjectAltName=${names.join(',')}`,
       '-keyout', KEY_FILE, '-out', CERT_FILE,
     ],

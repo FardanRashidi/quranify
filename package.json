@@ -1,5 +1,5 @@
 {
-  "name": "quran-finder",
+  "name": "quran-whisperer",
   "version": "0.1.0",
   "private": true,
   "description": "Listens to a Quran recitation, finds the surah and ayah, follows the reciter, and reads the translation aloud.",

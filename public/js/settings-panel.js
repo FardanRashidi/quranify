@@ -40,6 +40,25 @@ const translated = (language) => () => canReadAloud && settings.get('translation
  */
 const SECTIONS = [
   {
+    title: 'listen button',
+    rows: [
+      {
+        key: 'listenFollow',
+        label: 'follow the reciter',
+        type: 'toggle',
+        hint: 'once it finds the ayah, keep listening and move along with them. Off: stop listening once it’s found',
+      },
+      {
+        key: 'listenRead',
+        label: 'read the translation aloud',
+        type: 'toggle',
+        hint: 'from the ayah it finds: along with the reciter when following, otherwise on through the surah',
+        when: () => canReadAloud,
+        enabledWhen: () => settings.get('translation') !== 'none',
+      },
+    ],
+  },
+  {
     title: 'appearance',
     rows: [
       { key: 'theme', label: 'theme', type: 'choice', options: [['dark', 'dark'], ['light', 'light'], ['auto', 'auto']], hint: 'auto follows the device' },
@@ -153,9 +172,11 @@ export class SettingsPanel {
       }
       body.append(section);
     }
-    body.append(resetButton());
+    // A second close at the bottom, so there's no scrolling back up to the ×
+    const done = Object.assign(document.createElement('button'), { type: 'button', className: 'close-bottom primary', textContent: 'close' });
+    body.append(resetButton(), done);
 
-    dialog.querySelector('.close').addEventListener('click', () => dialog.close());
+    for (const close of dialog.querySelectorAll('.close, .close-bottom')) close.addEventListener('click', () => dialog.close());
     // A click on the backdrop lands on the dialog itself.
     dialog.addEventListener('click', (e) => {
       if (e.target === dialog) dialog.close();
