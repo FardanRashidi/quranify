@@ -11,6 +11,11 @@ const MAX_PACE = 3;
 // Words past the ayah's last one to wait for: the speech model only writes a
 // word once it's heard all of it.
 const LAST_WORD = 1;
+// How far on a passage that's in more than one place (a refrain) can be, to be
+// taken as the reciter's: twice as far as their pace would take them, plus a few
+// words. (A copy behind them is taken for one further on, so it's not believed either.)
+const REACH = 2;
+const REACH_WORDS = 6;
 
 export class Follower {
   /** The reciter's pace, in words per second (pauses included). */
@@ -41,7 +46,7 @@ export class Follower {
    */
   take(match, at) {
     if (!match) return null;
-    if (match.ambiguous && !match.continues) {
+    if (match.ambiguous && !(match.continues && this.#withinReach(match, at))) {
       // A phrase that's in more than one place. Before the reciter is found, show
       // the best guess (unsure); after, it's more likely a repeat than a jump.
       return this.#heard ? null : { surah: match.surah, ayah: match.ayah, unsure: true };
@@ -60,6 +65,13 @@ export class Follower {
     const finished = match.word === match.ayahEnd;
     this.at = { surah: match.surah, ayah: finished ? match.ayah + 1 : match.ayah };
     return { ...this.at, unsure: false };
+  }
+
+  #withinReach(match, at) {
+    if (!this.#heard) return true;
+    const seconds = Math.max(0, (at - this.#heard.at) / 1000);
+    const words = match.word - this.#heard.word;
+    return words >= 0 && words <= REACH_WORDS + REACH * this.pace * seconds;
   }
 
   /**
