@@ -85,6 +85,11 @@ body {
   font: 1rem/1.5 var(--font);
 }
 
+/* Phones flash a square over whatever's tapped: buttons show it in their own shape instead (below) */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Big enough to hit without looking twice */
 button,
 select {
@@ -96,11 +101,27 @@ select {
   color: var(--text);
   font: inherit;
   cursor: pointer;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
 }
 
-button:hover,
-select:hover {
-  border-color: var(--dim);
+/* Only with a mouse: on a phone it would stay on the last button tapped */
+@media (hover: hover) {
+  button:hover,
+  select:hover {
+    border-color: var(--dim);
+  }
+}
+
+/* Held down: a little darker, and a little smaller */
+button:active {
+  background-color: color-mix(in srgb, var(--text) 12%, var(--panel));
+  transform: scale(0.97);
+}
+
+button.primary:active {
+  background-color: color-mix(in srgb, var(--on-accent) 15%, var(--accent));
 }
 
 button[aria-pressed='true'] {
@@ -510,36 +531,108 @@ body:not(.tajweed) .tajweed-key,
 }
 
 #listen {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0 0.5rem;
+  gap: 0.625rem;
   min-height: 3.75rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 14px;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent);
   font-size: 1.25rem;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    box-shadow 0.2s,
+    transform 0.1s;
 }
 
+#listen .words {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+#listen .sub {
+  color: var(--dim);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+#listen .sub:empty,
 #listen .stop,
+#listen:not(.listening) .meter {
+  display: none;
+}
+
+/* Listening: a lighter button with a ring, a round stop sign, and what it hears */
+#listen.listening {
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  box-shadow: none;
+  color: var(--text);
+}
+
 #listen.listening .mic {
   display: none;
 }
 
 #listen.listening .stop {
   display: block;
+  width: 1.875rem;
+  height: 1.875rem;
 }
 
+#listen .stop circle {
+  fill: var(--accent);
+}
+
+#listen .stop rect {
+  fill: var(--on-accent);
+}
+
+/* The ring: it spreads out over and over while searching, and holds still while following */
+#listen.listening::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 2px solid var(--accent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+[data-status='searching'] #listen.listening::after {
+  animation: ripple 1.6s ease-out infinite;
+}
+
+@keyframes ripple {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.06, 1.35);
+  }
+}
+
+/* A bar for each part of what it hears, as tall as it's loud */
 .meter {
-  flex-basis: 100%;
-  text-align: center;
-  font: 0.625rem/1.1 var(--mono);
-  letter-spacing: 1px;
-  white-space: pre;
-  opacity: 0.75;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 1.625rem;
 }
 
-.meter:empty {
-  display: none;
+.meter i {
+  width: 4px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: scaleY(0.15);
+  transition: transform 80ms linear;
 }
 
 /* Too narrow for all three in a row (a small phone, or large text): Listen across
@@ -719,6 +812,7 @@ input.switch:checked::before {
 }
 
 .choice {
+  position: relative; /* holds its hidden radio buttons, or they'd stretch the whole panel */
   display: flex;
   flex: 0 1 auto;
   flex-wrap: wrap;

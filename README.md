@@ -114,7 +114,9 @@ From the top down:
 - **Read aloud** and its speed, with a surah open.
 - **Surahs** (the [surah list](#choosing-a-surah)), **Listen** (the big one)
   and **Settings** ([settings](#settings)). While it listens, Listen turns
-  into **Stop** and shows a small level meter of what it hears.
+  into **Stop**: a lighter button with a round stop sign, a line under *Stop*
+  saying whether it's *Listening…* or *Following*, and five bars that move
+  with what it hears. While it's still looking, a ring ripples out from it.
 
 The server starts loading its speech model as soon as the page opens. The
 first time ever, that's a 400 MB download, which takes a minute; the status

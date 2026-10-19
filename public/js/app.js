@@ -28,8 +28,8 @@ const CATCH_UP = 0.1;
 const MAX_CATCH_UP = 1.5;
 const MAX_BEHIND = 10;
 const NAME = 'Quran Whisperer';
-const METER_BARS = 12;
-const METER_CHARS = ' ▁▂▃▄▅▆▇█';
+const METER_BARS = 5;
+const METER_MIN = 0.15; // of a bar's height, so it shows when it's quiet
 // The key above each surah, in Malay when the translation is Malay. Each waqf
 // sign is written out in full-size letters (it's a miniature of them), since a
 // sign on its own has nothing to sit on.
@@ -66,6 +66,7 @@ const els = {
   listen: $('listen'),
   meter: $('meter'),
   listenLabel: document.querySelector('#listen .label'),
+  listenSub: $('listen-sub'),
   nowPlaying: $('now-playing'),
   glyph: $('glyph'),
   title: $('title'),
@@ -182,7 +183,7 @@ function stop() {
   clearTimeout(state.timer);
   state.busy = false;
   els.source.disabled = false;
-  els.meter.textContent = '';
+  for (const bar of els.meter.children) bar.style.transform = '';
   renderListenButtons();
   setStatus('idle');
 }
@@ -606,10 +607,7 @@ function frame() {
   requestAnimationFrame(frame);
 
   if (settings.get('meter')) {
-    els.meter.textContent = listener
-      .levels(METER_BARS)
-      .map((level) => METER_CHARS[Math.round(level * (METER_CHARS.length - 1))])
-      .join('');
+    listener.levels(METER_BARS).forEach((level, i) => (els.meter.children[i].style.transform = `scaleY(${Math.max(METER_MIN, level)})`));
   }
   renderStale();
   setText(els.status, statusText());
@@ -648,6 +646,7 @@ function idleStatusText() {
 function setStatus(status) {
   state.status = status;
   document.body.dataset.status = status;
+  renderListenButtons();
   renderStale();
   if (status === 'idle') els.status.textContent = idleStatusText();
 }
@@ -660,6 +659,7 @@ function renderStale() {
 
 function renderListenButtons() {
   els.listenLabel.textContent = listener.active ? 'Stop' : 'Listen';
+  els.listenSub.textContent = !listener.active ? '' : state.status === 'following' ? 'Following' : 'Listening…';
   els.listen.classList.toggle('listening', listener.active);
   const does = listenDoes() + (state.scope ? ' (in this surah only)' : '');
   els.listen.title = `Listen and ${does}  ( space )`;
@@ -830,6 +830,7 @@ if (!canCaptureTab) {
   els.source.hidden = true;
 }
 if (settings.get('translation') !== 'none' && !translation(settings.get('translation'))) settings.set('translation', 'en'); // one we no longer offer
+els.meter.append(...Array.from({ length: METER_BARS }, () => document.createElement('i')));
 for (const key of Object.keys(settings.DEFAULTS)) applySetting(key);
 renderListenButtons();
 reset();
