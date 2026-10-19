@@ -106,6 +106,17 @@ The server starts loading its speech model as soon as the page opens. The
 first time ever, that's a 400 MB download, which takes a minute; the footer
 shows its progress.
 
+### The tutorial
+
+The first time the page or app opens, a short tour lights up each part in turn
+(Listen, the status line, the surah list, the ayah controls, the translation
+and tajweed controls, and settings) and says what it's for. **next** and
+**back** move through it. Arrow keys work too. **skip**, Esc or Back closes it.
+After that, it opens from **settings → about → tutorial**.
+[`public/js/tutorial.js`](public/js/tutorial.js) holds the steps. The page
+remembers that the tour has been shown in `localStorage`, under
+`tutorialSeen`, so **reset all settings** doesn't bring it back.
+
 ### Listen
 
 1. Press **Listen** (or Space) and play a recitation. It listens until it knows
@@ -307,7 +318,7 @@ bottom, Esc, Back, or a tap outside it.
 | reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation's language (English: **Ibrahim Walk (recorded)**, or any of the device's English voices), with a **try** button to hear it; keep listening while reading (off) |
 | listening     | audio source; which microphone (when there's more than one); how much audio each check sends (8 s); how long it listens without placing the reciter before giving up (60 s) |
 | auto search   | Android app only: listening in the background, on or off; **add** the Quick Settings tile (Android 13 and later). See [Auto search](#auto-search). |
-| about         | a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, translations, recorded voice and speech model |
+| about         | the [tutorial](#the-tutorial); a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, translations, recorded voice and speech model |
 
 The footer's translation and **tajweed** controls and the speed button change
 the same settings, and the panel keeps up with them. Microphones only have
@@ -349,7 +360,7 @@ microphone or tab audio
 
 app.js decides when to listen and what to show; follow.js times the checks
 while following; verses-view.js draws the verses and highlights;
-surah-picker.js is the surah list.
+surah-picker.js is the surah list; tutorial.js is the first-run tour.
 ```
 
 The browser captures audio, keeps time and reads aloud. The server does the
@@ -1242,6 +1253,7 @@ public/
   js/surah-picker.js     the surah list
   js/settings.js         settings: defaults, saving, change notifications
   js/settings-panel.js   the settings panel
+  js/tutorial.js         the tour of the buttons, shown the first time
   js/api.js              backend calls and the screen wake lock (the app swaps in app/src/api.js)
 app/              Android app: the same page, with the server's work done on the phone
   build.mjs       npm run app → app/www/ (public/ + bundled app/src/)

@@ -172,6 +172,7 @@ const SECTIONS = [
   {
     title: 'about',
     rows: [
+      { type: 'tutorial', label: 'tutorial', hint: 'a quick tour of the buttons' },
       { type: 'link', label: 'made by FardanRashidi', hint: 'on GitHub', href: GITHUB, text: 'GitHub ↗' },
       { type: 'credits' },
     ],
@@ -181,6 +182,9 @@ const SECTIONS = [
 let uid = 0;
 
 export class SettingsPanel {
+  /** Called when the tutorial row's button is pressed. The panel closes itself. */
+  onTutorial = null;
+
   #dialog;
   #rows = []; // { row, update() }
 
@@ -204,6 +208,10 @@ export class SettingsPanel {
     body.append(resetButton(), done);
 
     for (const close of dialog.querySelectorAll('.close, .close-bottom')) close.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('tutorial', () => {
+      dialog.close();
+      this.onTutorial?.();
+    });
     // A click on the backdrop lands on the dialog itself.
     dialog.addEventListener('click', (e) => {
       if (e.target === dialog) dialog.close();
@@ -397,6 +405,13 @@ const CONTROLS = {
     // Older Androids can only add it by editing Quick Settings, so the row goes.
     const update = () => autoSearch.status().then(({ canAddTile }) => (button.closest('.row').hidden = !canAddTile), (err) => console.warn(err));
     return { control: button, update };
+  },
+
+  // Hands over to the tour, which the panel starts (see its constructor).
+  tutorial(spec, id) {
+    const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'start' });
+    button.addEventListener('click', () => button.dispatchEvent(new Event('tutorial', { bubbles: true })));
+    return { control: button };
   },
 
   // Opens in the browser, in the app too: Capacitor hands any page that isn't its own to the browser.

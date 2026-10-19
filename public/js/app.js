@@ -2,6 +2,7 @@ import { Listener } from './listener.js';
 import { VersesView } from './verses-view.js';
 import { SettingsPanel } from './settings-panel.js';
 import { SurahPicker } from './surah-picker.js';
+import { Tutorial } from './tutorial.js';
 import { Follower } from './follow.js';
 import { Reader, supportedFor } from './reader.js';
 import * as settings from './settings.js';
@@ -86,6 +87,7 @@ const listener = new Listener();
 const versesView = new VersesView($('verses'));
 const settingsPanel = new SettingsPanel($('settings'));
 const surahPicker = new SurahPicker($('surahs'));
+const tutorial = new Tutorial($('tutorial'));
 const follower = new Follower();
 const reader = new Reader();
 // Only desktop browsers can capture another tab's audio; phones just have the microphone.
@@ -727,6 +729,7 @@ els.readSpeed.addEventListener('click', nextSpeed);
 els.openSettings.addEventListener('click', () => settingsPanel.show());
 els.openSurahs.addEventListener('click', () => surahPicker.show(state.surah?.number ?? null));
 surahPicker.onPick = pickSurah;
+settingsPanel.onTutorial = () => tutorial.show();
 els.scope.addEventListener('click', () => {
   if (!state.surah) return;
   state.scope = state.scope === state.surah.number ? null : state.surah.number;
@@ -749,7 +752,7 @@ api.onOpenAyah(({ surah, ayah }) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey || e.metaKey || e.altKey || settingsPanel.open || surahPicker.open || e.target.closest?.('select, input')) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || settingsPanel.open || surahPicker.open || tutorial.open || e.target.closest?.('select, input')) return;
   if (e.key === ' ' && !e.target.closest('button')) {
     e.preventDefault();
     els.listen.click();
@@ -777,3 +780,4 @@ renderListenButtons();
 reset();
 setStatus('idle');
 warmUpQuran().catch(() => {}); // start loading the model now
+if (!tutorial.seen) tutorial.show(); // the first time

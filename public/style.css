@@ -767,6 +767,85 @@ input[type='color']:disabled {
   margin-top: 10px;
 }
 
+/* --- the tutorial --- */
+
+/* The whole screen, see-through: the spot's shadow is the shade */
+.tutorial {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.tutorial::backdrop {
+  background: transparent;
+}
+
+.tutorial .spot {
+  position: absolute;
+  border-radius: 10px;
+  outline: 2px solid var(--accent);
+  box-shadow: 0 0 0 200vmax rgb(0 0 0 / 0.6);
+  pointer-events: none;
+  transition-property: top, left, width, height;
+  transition-duration: 0.25s;
+}
+
+.tutorial .spot.none {
+  outline: none;
+}
+
+.tutorial .card {
+  position: absolute;
+  width: min(340px, calc(100vw - 32px));
+  padding: 12px 16px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.35);
+  transition-property: top, left;
+  transition-duration: 0.25s;
+}
+
+.tutorial .count {
+  margin: 0;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.tutorial h2 {
+  margin: 2px 0 6px;
+  font-size: 1rem;
+}
+
+.tutorial h2::before {
+  content: '# ';
+  color: var(--accent);
+}
+
+.tutorial .text {
+  margin: 0 0 14px;
+}
+
+.tutorial .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tutorial .skip {
+  margin-right: auto;
+  color: var(--dim);
+}
+
 /* --- the surah list --- */
 
 .surah-filter {

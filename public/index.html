@@ -73,14 +73,14 @@
 
     <footer class="statusbar">
       <span id="status" role="status"></span>
-      <span class="setting">
+      <span class="setting" id="ayah-controls">
         <span class="dim">ayah</span>
         <output id="ayah">–</output>
         <button id="ayah-down" title="Previous ayah  ( [ or ← )">−</button>
         <button id="ayah-up" title="Next ayah  ( ] or → )">+</button>
         <button id="ayah-sync" title="Listen again  ( S )">sync</button>
       </span>
-      <span class="setting">
+      <span class="setting" id="verse-options">
         <label class="setting">
           <span class="dim">translation</span>
           <select id="translation">
@@ -113,5 +113,8 @@
       </header>
       <div class="settings-body"></div>
     </dialog>
+
+    <!-- Filled in by tutorial.js -->
+    <dialog id="tutorial" class="tutorial" aria-labelledby="tutorial-title"></dialog>
   </body>
 </html>
