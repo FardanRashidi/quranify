@@ -2,6 +2,7 @@
   "name": "quran-whisperer",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Listens to a Quran recitation, finds the surah and ayah, follows the reciter, and reads the translation aloud.",
   "type": "module",
   "scripts": {

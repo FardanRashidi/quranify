@@ -1530,6 +1530,11 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 
 ## Credits and licences
 
+Quran Whisperer's own code is under the [MIT licence](LICENSE). The font in
+`public/fonts/` isn't: it keeps the KFGQPC's licence (below). The Quran text,
+translations, recorded voice and speech models aren't in the repository: the
+app fetches them from their sources when it runs.
+
 - [tarteel-ai/whisper-base-ar-quran](https://huggingface.co/tarteel-ai/whisper-base-ar-quran):
   the speech model (Apache-2.0), in YunusZJ's
   [ONNX export](https://huggingface.co/YunusZJ/whisper-base-ar-quran-ONNX).
