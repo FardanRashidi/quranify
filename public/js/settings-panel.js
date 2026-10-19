@@ -1,6 +1,6 @@
 // The settings panel: a dialog with a control for every setting in settings.js.
 // The controls follow the settings, so a change made elsewhere (like the
-// footer's tajweed button) shows here too.
+// tutorial's text size) shows here too.
 import * as settings from './settings.js';
 import { arabicParagraph } from './verses-view.js';
 import * as speech from './speech.js';
@@ -49,7 +49,7 @@ function credits() {
 
 const percent = (value) => `${value}%`;
 const seconds = (value) => `${value} s`;
-const NEXT_LISTEN = 'takes effect the next time you press Listen';
+const NEXT_LISTEN = 'Takes effect the next time you press Listen';
 const tajweedOn = () => settings.get('tajweed');
 const translatedTo = (language) => settings.get('translation') === language;
 
@@ -59,78 +59,84 @@ const translatedTo = (language) => settings.get('translation') === language;
  */
 const SECTIONS = [
   {
-    title: 'listen button',
+    title: 'Text',
+    rows: [
+      { key: 'textSize', label: 'Text size', type: 'choice', options: settings.TEXT_SIZES, hint: 'For everything: the verses, buttons and menus' },
+      { type: 'preview' },
+      {
+        key: 'translation',
+        label: 'Translation',
+        type: 'select',
+        options: [...TRANSLATIONS.map(({ code, name }) => [code, name]), ['none', 'None']],
+        hint: 'Downloaded the first time you choose it',
+      },
+      { key: 'arabicSize', label: 'Arabic size', type: 'range', min: 70, max: 200, step: 5, format: percent },
+      { key: 'translationSize', label: 'Translation size', type: 'range', min: 70, max: 200, step: 5, format: percent },
+    ],
+  },
+  {
+    title: 'Listen button',
     rows: [
       {
         key: 'listenFollow',
-        label: 'follow the reciter',
+        label: 'Follow the reciter',
         type: 'toggle',
-        hint: 'once it finds the ayah, keep listening and move along with them. Off: stop listening once it’s found',
+        hint: 'Once it finds the ayah, keep listening and move along with them. Off: stop listening once it’s found',
       },
       {
         key: 'listenRead',
-        label: 'read the translation aloud',
+        label: 'Read the translation aloud',
         type: 'toggle',
-        hint: 'from the ayah it finds: along with the reciter when following, otherwise on through the surah',
+        hint: 'From the ayah it finds: along with the reciter when following, otherwise on through the surah',
         when: () => canReadAloud,
         enabledWhen: () => settings.get('translation') !== 'none',
       },
     ],
   },
   {
-    title: 'appearance',
+    title: 'Appearance',
     rows: [
-      { key: 'theme', label: 'theme', type: 'choice', options: [['dark', 'dark'], ['light', 'light'], ['auto', 'auto']], hint: 'auto follows the device' },
-      { key: 'accent', label: 'accent colour', type: 'colour', themeVar: '--theme-accent' },
-      { key: 'meter', label: 'level meter', type: 'toggle' },
-      { key: 'animations', label: 'animations', type: 'toggle', hint: 'pulsing dot, smooth scrolling' },
+      { key: 'theme', label: 'Theme', type: 'choice', options: [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']], hint: 'Auto follows the device' },
+      { key: 'accent', label: 'Accent colour', type: 'colour', themeVar: '--theme-accent' },
+      { key: 'meter', label: 'Level meter', type: 'toggle', hint: 'On the Listen button, while it listens' },
+      { key: 'animations', label: 'Animations', type: 'toggle', hint: 'Pulsing dot, smooth scrolling' },
     ],
   },
   {
-    title: 'verses',
+    title: 'Tajweed',
     rows: [
-      { type: 'preview' },
-      {
-        key: 'translation',
-        label: 'translation',
-        type: 'select',
-        options: [...TRANSLATIONS.map(({ code, name }) => [code, name]), ['none', 'none']],
-        hint: 'downloaded the first time you choose it',
-      },
-      { key: 'arabicSize', label: 'arabic size', type: 'range', min: 70, max: 200, step: 5, format: percent },
-      { key: 'translationSize', label: 'translation size', type: 'range', min: 70, max: 200, step: 5, format: percent },
-      { key: 'tajweed', label: 'tajweed colours', type: 'toggle' },
-      { key: 'tajweedKey', label: 'key above each surah', type: 'toggle', enabledWhen: tajweedOn },
-      { key: 'tj-madd', label: 'long, 4–6 counts', type: 'rule', enabledWhen: tajweedOn },
-      { key: 'tj-qalqalah', label: 'qalqalah', type: 'rule', enabledWhen: tajweedOn },
-      { key: 'tj-ghunnah', label: 'nasal (ghunnah)', type: 'rule', enabledWhen: tajweedOn },
-      { key: 'tj-ra', label: 'heavy ra', type: 'rule', enabledWhen: tajweedOn },
-      { key: 'tj-waqf', label: 'waqf signs', type: 'rule', enabledWhen: tajweedOn },
+      { key: 'tajweed', label: 'Tajweed colours', type: 'toggle' },
+      { key: 'tajweedKey', label: 'Key above each surah', type: 'toggle', enabledWhen: tajweedOn },
+      { key: 'tj-madd', label: 'Long, 4–6 counts', type: 'rule', enabledWhen: tajweedOn },
+      { key: 'tj-qalqalah', label: 'Qalqalah', type: 'rule', enabledWhen: tajweedOn },
+      { key: 'tj-ghunnah', label: 'Nasal (ghunnah)', type: 'rule', enabledWhen: tajweedOn },
+      { key: 'tj-ra', label: 'Heavy ra', type: 'rule', enabledWhen: tajweedOn },
+      { key: 'tj-waqf', label: 'Waqf signs', type: 'rule', enabledWhen: tajweedOn },
     ],
   },
   {
-    title: 'following',
+    title: 'Following',
     rows: [
-      { key: 'followScroll', label: 'scroll along', type: 'toggle', hint: 'to each ayah as following or reading aloud reaches it' },
+      { key: 'followScroll', label: 'Scroll along', type: 'toggle', hint: 'To each ayah as following or reading aloud reaches it' },
       {
         key: 'followMin',
-        label: 'shortest wait between checks',
+        label: 'Shortest wait between checks',
         type: 'range',
         min: 1,
         max: 5,
         step: 0.5,
         format: seconds,
-        hint: 'through short ayahs, and near the end of a long one',
+        hint: 'Through short ayahs, and near the end of a long one',
       },
-      { key: 'followMax', label: 'longest wait between checks', type: 'range', min: 2, max: 15, step: 1, format: seconds, hint: 'early in a long ayah' },
+      { key: 'followMax', label: 'Longest wait between checks', type: 'range', min: 2, max: 15, step: 1, format: seconds, hint: 'Early in a long ayah' },
     ],
   },
   {
-    title: 'reading aloud',
+    title: 'Reading aloud',
     rows: [
       {
         key: 'readingSpeed',
-        label: 'speed',
+        label: 'Speed',
         type: 'range',
         min: 0.5,
         max: 2,
@@ -140,62 +146,63 @@ const SECTIONS = [
       },
       // For the translation shown
       {
-        label: 'voice',
+        label: 'Voice',
         type: 'voice',
         when: () => !translatedTo('none') && supportedFor(settings.get('translation')),
         hint: () => (translatedTo('en') ? 'Ibrahim Walk is a recording of the translation shown (Saheeh International), played from the internet' : ''),
       },
       {
         type: 'note',
-        text: () => `this device has no voice for ${translation(settings.get('translation'))?.name}, so it can’t be read aloud. You can add one in the device’s text-to-speech settings`,
+        text: () => `This device has no voice for ${translation(settings.get('translation'))?.name}, so it can’t be read aloud. You can add one in the device’s text-to-speech settings`,
         when: () => canReadAloud && !translatedTo('none') && !supportedFor(settings.get('translation')),
       },
       {
         key: 'readEveryAyah',
-        label: 'read every ayah',
+        label: 'Read every ayah',
         type: 'toggle',
-        hint: 'while following: each ayah in turn, faster (up to 1.5×) when the reciter gets ahead. Off: it skips to the ayah the reciter is on',
+        hint: 'While following: each ayah in turn, faster (up to 1.5×) when the reciter gets ahead. Off: it skips to the ayah the reciter is on',
         when: () => canReadAloud,
       },
       {
         key: 'listenWhileReading',
-        label: 'keep listening while reading',
+        label: 'Keep listening while reading',
         type: 'toggle',
-        hint: 'for headphones. Otherwise checks wait while it reads, so the microphone doesn’t hear the voice',
+        hint: 'For headphones. Otherwise checks wait while it reads, so the microphone doesn’t hear the voice',
         when: () => canReadAloud,
       },
-      { type: 'note', text: 'this browser can’t read aloud', when: () => !canReadAloud },
+      { type: 'note', text: 'This browser can’t read aloud', when: () => !canReadAloud },
     ],
   },
   {
-    title: 'listening',
+    title: 'Listening',
     rows: [
       {
         key: 'source',
-        label: 'audio source',
+        label: 'Audio source',
         type: 'choice',
-        options: [['mic', 'microphone'], ['tab', 'tab / system']],
+        options: [['mic', 'Microphone'], ['tab', 'Tab / system']],
         hint: NEXT_LISTEN,
         when: () => Boolean(navigator.mediaDevices?.getDisplayMedia),
       },
-      { key: 'microphone', label: 'microphone', type: 'microphone', hint: NEXT_LISTEN },
-      { key: 'clipSeconds', label: 'audio sent per try', type: 'range', min: 5, max: 12, step: 1, format: seconds, hint: 'more is surer, less is quicker' },
-      { key: 'giveUpAfter', label: 'give up after', type: 'range', min: 20, max: 300, step: 10, format: seconds, hint: 'of listening without finding the ayah' },
+      { key: 'microphone', label: 'Microphone', type: 'microphone', hint: NEXT_LISTEN },
+      { key: 'clipSeconds', label: 'Audio sent per try', type: 'range', min: 5, max: 12, step: 1, format: seconds, hint: 'More is surer, less is quicker' },
+      { key: 'giveUpAfter', label: 'Give up after', type: 'range', min: 20, max: 300, step: 10, format: seconds, hint: 'Of listening without finding the ayah' },
     ],
   },
   {
-    title: 'auto search',
+    title: 'Auto search',
     when: () => autoSearch.supported,
     rows: [
-      { type: 'autoSearch', label: 'listen in the background', hint: 'with the screen off too, and send a notification for each surah it hears' },
-      { type: 'tile', label: 'Quick Settings tile', hint: 'turns it on and off from the top of the screen. You can also add it by editing Quick Settings' },
+      { type: 'autoSearch', label: 'Listen in the background', hint: 'With the screen off too, and send a notification for each surah it hears' },
+      { type: 'tile', label: 'Quick Settings tile', hint: 'Turns it on and off from the top of the screen. You can also add it by editing Quick Settings' },
+      { type: 'history', label: 'History', hint: 'Each surah it’s heard, under Surahs → Heard' },
     ],
   },
   {
-    title: 'about',
+    title: 'About',
     rows: [
-      { type: 'tutorial', label: 'tutorial', hint: 'a quick tour of the buttons' },
-      { type: 'link', label: 'made by FardanRashidi', hint: 'on GitHub', href: GITHUB, text: 'GitHub ↗' },
+      { type: 'tutorial', label: 'Tutorial', hint: 'A quick tour of the buttons' },
+      { type: 'link', label: 'Made by FardanRashidi', hint: 'On GitHub', href: GITHUB, text: 'GitHub ↗' },
       { type: 'credits' },
     ],
   },
@@ -206,6 +213,8 @@ let uid = 0;
 export class SettingsPanel {
   /** Called when the tutorial row's button is pressed. The panel closes itself. */
   onTutorial = null;
+  /** Called when the history row's button is pressed. The panel closes itself. */
+  onHistory = null;
 
   #dialog;
   #rows = []; // { row, update() }
@@ -226,13 +235,17 @@ export class SettingsPanel {
       body.append(section);
     }
     // A second close at the bottom, so there's no scrolling back up to the ×
-    const done = Object.assign(document.createElement('button'), { type: 'button', className: 'close-bottom primary', textContent: 'close' });
+    const done = Object.assign(document.createElement('button'), { type: 'button', className: 'close-bottom primary', textContent: 'Close' });
     body.append(resetButton(), done);
 
     for (const close of dialog.querySelectorAll('.close, .close-bottom')) close.addEventListener('click', () => dialog.close());
     dialog.addEventListener('tutorial', () => {
       dialog.close();
       this.onTutorial?.();
+    });
+    dialog.addEventListener('history', () => {
+      dialog.close();
+      this.onHistory?.();
     });
     // A click on the backdrop lands on the dialog itself.
     dialog.addEventListener('click', (e) => {
@@ -332,14 +345,15 @@ const CONTROLS = {
     group.setAttribute('role', 'radiogroup');
     group.setAttribute('aria-labelledby', `${id}-label`);
     const inputs = options.map(([value, text]) => {
-      const input = Object.assign(document.createElement('input'), { type: 'radio', name: id, value });
+      const input = Object.assign(document.createElement('input'), { type: 'radio', name: id, value: String(value) });
       input.addEventListener('change', () => settings.set(key, value));
       const option = document.createElement('label');
       option.append(input, text);
       group.append(option);
       return input;
     });
-    return { control: group, update: () => inputs.forEach((input) => (input.checked = input.value === settings.get(key))) };
+    // The option's own value, which can be a number
+    return { control: group, update: () => inputs.forEach((input, i) => (input.checked = options[i][0] === settings.get(key))) };
   },
 
   select({ key, options }, id) {
@@ -370,7 +384,7 @@ const CONTROLS = {
     const control = document.createElement('div');
     control.className = 'colour';
     const input = Object.assign(document.createElement('input'), { type: 'color', id });
-    const reset = Object.assign(document.createElement('button'), { type: 'button', textContent: 'reset', title: 'Back to the theme’s colour' });
+    const reset = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Reset', title: 'Back to the theme’s colour' });
     input.addEventListener('input', () => settings.set(key, input.value));
     reset.addEventListener('click', () => settings.set(key, ''));
     control.append(reset, input);
@@ -390,7 +404,7 @@ const CONTROLS = {
     const toggle = switchInput(id);
     const input = Object.assign(document.createElement('input'), { type: 'color' });
     input.setAttribute('aria-labelledby', `${id}-label`);
-    const reset = Object.assign(document.createElement('button'), { type: 'button', textContent: 'reset', title: 'Back to the theme’s colour' });
+    const reset = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Reset', title: 'Back to the theme’s colour' });
     toggle.addEventListener('change', () => settings.set(key, toggle.checked ? '' : 'off'));
     input.addEventListener('input', () => settings.set(key, input.value));
     reset.addEventListener('click', () => settings.set(key, ''));
@@ -414,7 +428,7 @@ const CONTROLS = {
     const control = document.createElement('div');
     control.className = 'colour';
     const select = Object.assign(document.createElement('select'), { id });
-    const tryIt = Object.assign(document.createElement('button'), { type: 'button', textContent: 'try', title: 'Hear this voice' });
+    const tryIt = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Try', title: 'Hear this voice' });
     const language = () => settings.get('translation');
     select.addEventListener('change', () => settings.set(`voice-${language()}`, select.value));
     tryIt.addEventListener('click', async () => {
@@ -453,10 +467,10 @@ const CONTROLS = {
 
   // Asks Android (13 and later) to add auto search's tile to Quick Settings.
   tile(spec, id) {
-    const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'add' });
+    const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'Add' });
     button.addEventListener('click', async () => {
       const { result } = await autoSearch.addTile().catch(() => ({ result: 'error' }));
-      button.textContent = result === 'added' || result === 'already' ? 'added' : 'add';
+      button.textContent = result === 'added' || result === 'already' ? 'Added' : 'Add';
     });
     // Older Androids can only add it by editing Quick Settings, so the row goes.
     const update = () => autoSearch.status().then(({ canAddTile }) => (button.closest('.row').hidden = !canAddTile), (err) => console.warn(err));
@@ -465,8 +479,15 @@ const CONTROLS = {
 
   // Hands over to the tour, which the panel starts (see its constructor).
   tutorial(spec, id) {
-    const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'start' });
+    const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'Start' });
     button.addEventListener('click', () => button.dispatchEvent(new Event('tutorial', { bubbles: true })));
+    return { control: button };
+  },
+
+  // Hands over to the surah list's Heard tab (see the constructor).
+  history(spec, id) {
+    const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'Show' });
+    button.addEventListener('click', () => button.dispatchEvent(new Event('history', { bubbles: true })));
     return { control: button };
   },
 
@@ -504,8 +525,8 @@ async function listMicrophones(entry) {
   } catch {}
   entry.row.hidden = inputs.length < 2;
   select.replaceChildren(
-    new Option('default', ''),
-    ...inputs.map((d, i) => new Option(d.label || `microphone ${i + 1}`, d.deviceId)),
+    new Option('Default', ''),
+    ...inputs.map((d, i) => new Option(d.label || `Microphone ${i + 1}`, d.deviceId)),
   );
   entry.update();
 }
@@ -517,7 +538,7 @@ async function listVoices(entry) {
   const voices = await voicesFor(language);
   if (language !== settings.get('translation')) return; // changed again meanwhile
   const options = [
-    new Option(voices.length ? 'automatic' : 'none for this language on this device', ''),
+    new Option(voices.length ? 'Automatic' : 'None for this language on this device', ''),
     ...voices.map((v) => new Option(`${v.name} (${v.lang})`, v.id)),
   ];
   if (language === 'en' && recording.supported) options.unshift(new Option('Ibrahim Walk (recorded)', RECORDED));
@@ -527,21 +548,21 @@ async function listVoices(entry) {
 
 // Asks twice, since there's no undo.
 function resetButton() {
-  const button = Object.assign(document.createElement('button'), { type: 'button', className: 'reset-all', textContent: 'reset all settings' });
+  const button = Object.assign(document.createElement('button'), { type: 'button', className: 'reset-all', textContent: 'Reset all settings' });
   let armed = false;
   button.addEventListener('click', () => {
     if (!armed) {
       armed = true;
-      button.textContent = 'tap again to reset everything';
+      button.textContent = 'Tap again to reset everything';
       setTimeout(() => {
         armed = false;
-        button.textContent = 'reset all settings';
+        button.textContent = 'Reset all settings';
       }, 4000);
       return;
     }
     settings.reset();
     armed = false;
-    button.textContent = 'reset all settings';
+    button.textContent = 'Reset all settings';
   });
   return button;
 }

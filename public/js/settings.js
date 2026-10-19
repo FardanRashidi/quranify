@@ -11,14 +11,15 @@ export const DEFAULTS = Object.freeze({
   listenFollow: true, // keep listening, and move along with the reciter
   listenRead: true, // read the translation aloud
   // appearance
+  textSize: 100, // % of the normal size, for everything: 100 | 125 | 150
   theme: 'dark', // dark | light | auto (follow the device)
   accent: '', // '#rrggbb', or '' for the theme's own
-  meter: true, // the level meter in the top bar
+  meter: true, // the level meter on the Listen button
   animations: true, // pulsing dot, smooth scrolling
   // verses
   translation: 'en', // a code from translations.js, or none
-  arabicSize: 100, // %
-  translationSize: 100, // %
+  arabicSize: 100, // %, on top of textSize
+  translationSize: 100, // %, on top of textSize
   tajweed: true, // tajweed colours and the key above each surah
   tajweedKey: true,
   // Each tajweed colour: '#rrggbb', '' for the theme's own, or 'off'
@@ -45,6 +46,13 @@ export const DEFAULTS = Object.freeze({
   clipSeconds: 8, // how much recent audio each attempt sends
   giveUpAfter: 60, // seconds of listening without finding anything
 });
+
+/** textSize's choices, for the settings panel and the tutorial */
+export const TEXT_SIZES = [
+  [100, 'Normal'],
+  [125, 'Large'],
+  [150, 'Largest'],
+];
 
 const values = { ...DEFAULTS, ...load() };
 const listeners = new Set();

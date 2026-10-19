@@ -5,7 +5,7 @@ import { SurahPicker } from './surah-picker.js';
 import { Tutorial } from './tutorial.js';
 import { Follower } from './follow.js';
 import { Reader, supportedFor, refreshVoices } from './reader.js';
-import { TRANSLATIONS } from './translations.js';
+import { translation } from './translations.js';
 import * as settings from './settings.js';
 import * as api from './api.js';
 
@@ -28,7 +28,7 @@ const CATCH_UP = 0.1;
 const MAX_CATCH_UP = 1.5;
 const MAX_BEHIND = 10;
 const NAME = 'Quran Whisperer';
-const METER_BARS = 24;
+const METER_BARS = 12;
 const METER_CHARS = ' ▁▂▃▄▅▆▇█';
 // The key above each surah, in Malay when the translation is Malay. Each waqf
 // sign is written out in full-size letters (it's a miniature of them), since a
@@ -65,24 +65,22 @@ const els = {
   source: $('source'),
   listen: $('listen'),
   meter: $('meter'),
+  listenLabel: document.querySelector('#listen .label'),
   nowPlaying: $('now-playing'),
   glyph: $('glyph'),
   title: $('title'),
   subtitle: $('subtitle'),
   details: $('details'),
-  elapsed: $('elapsed'),
-  duration: $('duration'),
   barFill: $('bar-fill'),
   reader: $('reader'),
   read: $('read'),
+  readLabel: document.querySelector('#read .label'),
   readSpeed: $('read-speed'),
   status: $('status'),
+  ayahControls: $('ayah-controls'),
   ayah: $('ayah'),
   ayahDown: $('ayah-down'),
   ayahUp: $('ayah-up'),
-  ayahSync: $('ayah-sync'),
-  translation: $('translation'),
-  tajweed: $('tajweed'),
   openSettings: $('open-settings'),
   openSurahs: $('open-surahs'),
   scope: $('scope'),
@@ -123,7 +121,6 @@ const state = {
   busy: false,
   syncQueued: false,
   timer: null,
-  nextAttemptAt: 0,
   // reading aloud
   reading: false, // reading the translation aloud, ayah after ayah
   readingAyah: null, // the ayah being read; null between ayahs (waiting for the reciter to reach the next)
@@ -148,7 +145,7 @@ async function start(follow = settings.get('listenFollow')) {
   } catch (err) {
     els.listen.disabled = false;
     setStatus('idle');
-    els.status.textContent = `couldn't start: ${describeStartError(err)}`;
+    els.status.textContent = `Couldn’t start: ${describeStartError(err)}`;
     return;
   }
   listener.onEnded = stop;
@@ -212,7 +209,6 @@ function syncNow() {
 
 function schedule(seconds) {
   clearTimeout(state.timer);
-  state.nextAttemptAt = performance.now() + seconds * 1000;
   state.timer = setTimeout(attempt, seconds * 1000);
 }
 
@@ -234,18 +230,18 @@ async function attempt() {
   try {
     const clip = await listener.clip(seconds);
     if (session !== state.session) return;
-    if (clip.audible < (state.scope ? MIN_AUDIBLE_IN_SURAH : MIN_AUDIBLE)) return miss('too quiet');
+    if (clip.audible < (state.scope ? MIN_AUDIBLE_IN_SURAH : MIN_AUDIBLE)) return miss('Too quiet');
     await warmUpQuran();
     if (session !== state.session) return;
     const match = await api.recognizeQuran(clip.pcm, follower.word ?? state.searchFrom, state.scope);
     if (session !== state.session) return;
     state.errors = 0;
     if (match) onVerse(match, clip.endedAt);
-    else miss('no verse matched yet');
+    else miss('No ayah matched yet');
   } catch (err) {
     if (session !== state.session) return;
     console.error(err);
-    state.note = `error: ${err.message}`;
+    state.note = `Error: ${err.message}`;
     state.errors++;
     schedule(Math.min(RETRY_AFTER_ERROR * 2 ** (state.errors - 1), MAX_RETRY_AFTER_ERROR));
   } finally {
@@ -303,7 +299,7 @@ function miss(reason) {
   state.note = reason;
   // Give up after a while without finding the reciter (or, following, without hearing them).
   if (performance.now() - listeningSince() > settings.get('giveUpAfter') * 1000) {
-    state.note = follower.found ? 'lost the reciter' : "couldn't place the recitation";
+    state.note = follower.found ? 'Lost the reciter' : 'Couldn’t find the ayah';
     return stop();
   }
   schedule(nextDelay());
@@ -395,7 +391,7 @@ async function readAloud(from = state.ayah) {
       });
     } catch (err) {
       console.error(err);
-      if (session === state.readSession) stopReading(`couldn't read aloud: ${err.message}`);
+      if (session === state.readSession) stopReading(`Couldn’t read aloud: ${err.message}`);
       return;
     }
     if (session !== state.readSession) return;
@@ -471,10 +467,11 @@ function canRead() {
 }
 
 function renderReading() {
-  els.reader.hidden = !canRead();
-  els.read.setAttribute('aria-pressed', String(state.reading));
+  els.reader.hidden = !state.surah || !canRead();
+  els.read.classList.toggle('on', state.reading);
+  els.readLabel.textContent = state.reading ? 'Stop reading' : 'Read aloud';
   els.read.classList.toggle('speaking', state.readingAyah !== null);
-  els.readSpeed.textContent = `${settings.get('readingSpeed')}×`;
+  els.readSpeed.textContent = `Speed ${settings.get('readingSpeed')}×`;
   if (state.status === 'idle') els.status.textContent = idleStatusText();
   updateWakeLock();
 }
@@ -491,19 +488,21 @@ function reset() {
   Object.assign(state, { surah: null, ayah: null, unsure: false, placed: false, scope: null });
   els.nowPlaying.hidden = true;
   document.title = NAME;
-  versesView.message(listener.active ? 'listening for the recitation…' : 'press Listen and play a recitation, or choose a surah to read');
+  versesView.message(listener.active ? 'Listening for the recitation…' : 'Press Listen and play a recitation, or choose a surah to read');
   renderAyah();
+  renderReading();
   renderScope();
 }
 
-/** A surah chosen from the list: open it at the start, to read, and to listen in. */
-function pickSurah(number) {
+/** A surah chosen from the list: open it (at the start, or where auto search heard it), to read, and to listen in. */
+function pickSurah(number, ayah = 1) {
   if (listener.active) stop();
   if (state.reading) stopReading();
   state.scope = number;
   state.placed = false;
-  if (state.surah?.number === number && state.surah.verses) setAyah(1, true);
-  else showSurah(number, 1);
+  state.note = ''; // about the last listen, not this surah
+  if (state.surah?.number === number && state.surah.verses) setAyah(ayah, true);
+  else showSurah(number, ayah);
   renderScope();
 }
 
@@ -521,12 +520,14 @@ async function showSurah(number, ayah) {
   state.lastRead = null; // reading starts again where the reciter is
   if (state.scope !== number) state.scope = null; // that was about another surah
   renderScope();
+  renderReading();
   if (state.reading) pauseReading(); // its verse is going; it starts again once the surah's loaded
   els.nowPlaying.hidden = false;
   els.glyph.textContent = String(number);
   els.title.textContent = `Surah ${number}`;
   els.subtitle.textContent = els.details.textContent = '';
-  versesView.message('loading verses…');
+  renderAyah();
+  versesView.message('Loading the surah…', [els.nowPlaying]);
   try {
     const translation = settings.get('translation');
     const surah = await api.fetchSurah(number, translation);
@@ -534,17 +535,16 @@ async function showSurah(number, ayah) {
     state.surah = surah;
     els.title.textContent = `Surah ${surah.englishName}`;
     els.subtitle.textContent = `${surah.englishNameTranslation} · ${surah.name}`;
-    els.details.textContent = `${surah.revelationType} · ${surah.verses.length} verses`;
+    els.details.textContent = `${surah.revelationType} · ${surah.verses.length} ayahs`;
     // Offline the first time a translation is chosen: the verses come without it.
     if (surah.translationError) els.details.textContent += ' · couldn’t download the translation (offline?)';
-    els.duration.textContent = String(surah.verses.length);
     document.title = `${surah.englishName} — ${NAME}`;
-    versesView.showVerses(surah, tajweedKey(), translation);
+    versesView.showVerses(surah, [els.nowPlaying, tajweedKey()], translation);
     renderTajweed();
     setAyah(state.ayah, true); // the latest match may have arrived while loading
     if (state.reading) readAloud();
   } catch (err) {
-    if (state.surah === placeholder) versesView.message(`couldn't load the surah: ${err.message}`);
+    if (state.surah === placeholder) versesView.message(`Couldn’t load the surah: ${err.message}`);
   }
 }
 
@@ -573,7 +573,6 @@ function renderTajweed() {
   const on = settings.get('tajweed');
   document.body.classList.toggle('tajweed', on);
   document.body.classList.toggle('no-tajweed-key', !settings.get('tajweedKey'));
-  els.tajweed.setAttribute('aria-pressed', String(on));
   for (const item of document.querySelectorAll('.tajweed-key [data-colour]')) {
     item.hidden = settings.get(`tj-${item.dataset.colour}`) === 'off';
   }
@@ -586,7 +585,6 @@ function setAyah(ayah, scroll = true) {
   if (!verses) return; // applied once the surah has loaded
   state.ayah = Math.min(Math.max(ayah, 1), verses.length);
   versesView.setCurrent(state.ayah - 1, scroll);
-  els.elapsed.textContent = `ayah ${state.ayah}`;
   els.barFill.style.width = `${(state.ayah / verses.length) * 100}%`;
   renderAyah();
   if (state.status === 'idle') els.status.textContent = idleStatusText();
@@ -619,39 +617,32 @@ function frame() {
 
 function statusText() {
   if (state.loadingModel) return modelLoadingText();
-  if (state.unsure) return 'this passage appears in more than one place · listening a bit more…';
+  if (state.unsure) return 'This passage is in more than one place. Listening a bit more…';
   if (state.following && follower.found) {
+    const place = state.surah?.verses ? `: ${state.surah.englishName}, ayah ${state.ayah}` : '';
+    if (lost()) return `Following${place} · Can’t hear the reciter`;
     const behind = readingBehind();
-    const place =
-      (state.surah?.verses ? ` ${state.surah.englishName} ${state.surah.number}:${state.ayah}` : '') +
-      (behind ? ` · reading ayah ${state.readingAyah}, ${behind} behind` : '');
-    if (micHearsReading() && state.readingAyah !== null) return `following${place} · listening again once it’s read aloud`;
-    if (lost()) return `following${place} · can't hear the reciter${state.note ? ` (${state.note})` : ''} · listening…`;
-    if (state.busy) return `following${place} · checking…`;
-    const wait = Math.max(0, Math.ceil((state.nextAttemptAt - performance.now()) / 1000));
-    return `following${place} · next check in ${wait}s`;
+    return `Following${place}${behind ? ` · Reading ayah ${state.readingAyah} (${behind} behind)` : ''}`;
   }
   const where = state.scope && state.surah?.englishName ? ` in ${state.surah.englishName}` : '';
-  return `listening for the recitation${where}…${state.note ? ` · ${state.note}` : ''}`;
+  return `Listening for the recitation${where}…${state.note ? ` · ${state.note}` : ''}`;
 }
 
 function modelLoadingText() {
   const { loaded, total } = state.modelProgress ?? {};
-  if (!total) return 'loading the Quran speech model… (the first time downloads ~400 MB)';
+  if (!total) return 'Loading the Quran speech model… (the first time downloads ~400 MB)';
   const mb = (bytes) => Math.round(bytes / 1e6);
-  return `loading the Quran speech model… ${Math.floor((loaded / total) * 100)}% (${mb(loaded)} of ${mb(total)} MB)`;
+  return `Loading the Quran speech model… ${Math.floor((loaded / total) * 100)}% (${mb(loaded)} of ${mb(total)} MB)`;
 }
 
 function idleStatusText() {
-  if (state.surah?.verses && state.ayah) {
-    const place = `${state.surah.englishName} ${state.surah.number}:${state.ayah}`;
-    if (state.readError) return `${place} · ${state.readError}`;
-    if (state.reading) return `${place} · reading the translation aloud`;
-    return `${place} · − + to move · sync if you lose your place`;
-  }
-  if (state.note) return `${state.note} · press Listen to try again`;
+  const place = state.surah?.verses && state.ayah ? `${state.surah.englishName}, ayah ${state.ayah}` : '';
+  if (place && state.readError) return `${place} · ${state.readError}`;
+  if (place && state.reading) return `${place} · Reading aloud`;
+  if (state.note) return `${state.note}. Press Listen to try again`;
+  if (place) return place;
   if (state.loadingModel && state.modelProgress) return modelLoadingText();
-  return state.surah ? 'stopped · press Listen to start again' : 'idle · press Listen (space) and play a recitation';
+  return state.surah ? 'Stopped. Press Listen to start again' : 'Ready. Press Listen and play a recitation';
 }
 
 function setStatus(status) {
@@ -668,11 +659,10 @@ function renderStale() {
 }
 
 function renderListenButtons() {
-  els.listen.textContent = listener.active ? 'Stop' : 'Listen';
-  els.ayahSync.textContent = listener.active ? 'stop' : 'sync';
+  els.listenLabel.textContent = listener.active ? 'Stop' : 'Listen';
+  els.listen.classList.toggle('listening', listener.active);
   const does = listenDoes() + (state.scope ? ' (in this surah only)' : '');
   els.listen.title = `Listen and ${does}  ( space )`;
-  els.ayahSync.title = `Listen again and ${does}  ( S )`;
   updateWakeLock();
 }
 
@@ -685,7 +675,10 @@ function listenDoes() {
 }
 
 function renderAyah() {
-  els.ayah.textContent = state.surah?.verses && state.ayah ? `${state.ayah} / ${state.surah.verses.length}` : '–';
+  els.ayahControls.hidden = !state.surah;
+  // "Ayah " goes when the screen's too narrow for it (see style.css)
+  const word = Object.assign(document.createElement('span'), { className: 'word', textContent: 'Ayah ' });
+  els.ayah.replaceChildren(word, state.surah?.verses && state.ayah ? `${state.ayah} of ${state.surah.verses.length}` : '–');
 }
 
 // The accent is the user's own colour, or the theme's.
@@ -718,7 +711,7 @@ function applyTheme() {
   settingsPanel.refresh(); // colours shown as "the theme's own" changed
 }
 
-const SCALES = { arabicSize: '--arabic-scale', translationSize: '--translation-scale' };
+const SCALES = { textSize: '--text-scale', arabicSize: '--arabic-scale', translationSize: '--translation-scale' };
 
 /** Puts a setting into effect, whether it changed in the settings panel or elsewhere. */
 function applySetting(key) {
@@ -754,7 +747,6 @@ function applySetting(key) {
     case 'listenRead':
       return renderListenButtons();
     case 'translation':
-      els.translation.value = value;
       if (value === 'none' && state.reading) stopReading();
       renderReading();
       renderListenButtons();
@@ -774,7 +766,7 @@ function applySetting(key) {
 }
 
 function describeStartError(err) {
-  if (err.name === 'NotAllowedError') return 'permission denied';
+  if (err.name === 'NotAllowedError') return 'the microphone wasn’t allowed';
   if (err.name === 'NotFoundError') return 'no microphone found';
   return err.message;
 }
@@ -786,17 +778,14 @@ function setText(el, text) {
 // --- wiring -----------------------------------------------------------------
 
 els.listen.addEventListener('click', () => (listener.active ? stop() : start()));
-// Listen again, down by the ayah buttons where a thumb can reach it
-els.ayahSync.addEventListener('click', () => els.listen.click());
 els.source.addEventListener('change', () => settings.set('source', els.source.value));
-els.translation.addEventListener('change', () => settings.set('translation', els.translation.value));
-els.tajweed.addEventListener('click', () => settings.set('tajweed', !settings.get('tajweed')));
 els.read.addEventListener('click', toggleReading);
 els.readSpeed.addEventListener('click', nextSpeed);
 els.openSettings.addEventListener('click', () => settingsPanel.show());
 els.openSurahs.addEventListener('click', () => surahPicker.show(state.surah?.number ?? null));
 surahPicker.onPick = pickSurah;
 settingsPanel.onTutorial = () => tutorial.show();
+settingsPanel.onHistory = () => surahPicker.show(state.surah?.number ?? null, 'heard');
 els.scope.addEventListener('click', () => {
   if (!state.surah) return;
   state.scope = state.scope === state.surah.number ? null : state.surah.number;
@@ -840,9 +829,7 @@ if (!canCaptureTab) {
   els.source.querySelector('[value="tab"]').remove();
   els.source.hidden = true;
 }
-els.translation.replaceChildren(...TRANSLATIONS.map(({ code, name }) => new Option(name, code)), new Option('None', 'none'));
-els.translation.value = settings.get('translation');
-if (!els.translation.value) settings.set('translation', 'en'); // a translation we no longer offer
+if (settings.get('translation') !== 'none' && !translation(settings.get('translation'))) settings.set('translation', 'en'); // one we no longer offer
 for (const key of Object.keys(settings.DEFAULTS)) applySetting(key);
 renderListenButtons();
 reset();

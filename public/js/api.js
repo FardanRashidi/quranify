@@ -46,7 +46,7 @@ export function styleSystemBars(dark) {}
  * Auto search (listening in the background, from a Quick Settings tile) is only
  * in the Android app: see app/src/api.js.
  */
-export const autoSearch = { supported: false };
+export const autoSearch = { supported: false, history: async () => [], clearHistory: async () => {} };
 
 /** In the app, calls back with { surah, ayah } when it's opened from one of auto search's notifications. */
 export function onOpenAyah(callback) {}

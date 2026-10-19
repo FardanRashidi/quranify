@@ -6,7 +6,8 @@ import { dataPath } from './paths.js';
 
 const CACHE_DIR = dataPath('.cache', 'quran');
 
-async function loadEdition(id) {
+/** One edition, from the cache or else downloaded into it (app/build.mjs uses this too). */
+export async function loadEdition(id) {
   const file = path.join(CACHE_DIR, `${id}.json`);
   try {
     return JSON.parse(await fs.readFile(file, 'utf8'));

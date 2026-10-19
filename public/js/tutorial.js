@@ -2,49 +2,49 @@
 // it's for. It opens by itself the first time the app loads, and from the
 // settings' "tutorial" row after that.
 import { autoSearch } from './api.js';
+import * as settings from './settings.js';
 
 const SEEN_KEY = 'tutorialSeen';
 const PAD = 6; // around the lit-up part
 const GAP = 12; // between it and the card
 const MARGIN = 16; // keeps the card off the screen's edges
 
-/** Each step: what it lights up (nothing: the card sits in the middle), and what it says. */
+/**
+ * Each step: what it lights up (nothing: the card sits in the middle), and what
+ * it says. `sizes` adds the text size buttons.
+ */
 const STEPS = [
   {
     title: 'Quran Whisperer',
-    text: 'It listens to a recitation, finds the surah and ayah, follows the reciter, and reads the translation aloud. Here’s a quick look at the buttons.',
+    text: 'It listens to a recitation, finds the surah and ayah, follows the reciter, and reads the translation aloud. First, choose a text size that’s easy to read. You can change it later in Settings.',
+    sizes: true,
   },
   {
     target: '#listen',
-    title: 'listen',
-    text: 'Press it and play a recitation, or recite yourself. It finds the ayah, then follows the reciter and reads the translation aloud. Press it again to stop. The first time, it asks to use the microphone.',
+    title: 'Listen',
+    text: 'Press it and play a recitation, or recite yourself. It finds the ayah, then follows the reciter and reads the translation aloud. Press Stop when you’re done. The first time, it asks to use the microphone.',
   },
   {
-    target: '#status',
-    title: 'status',
-    text: 'What it’s doing: loading the speech model, listening, following, or why it hasn’t found the ayah yet. The dot at the top pulses while it searches and stays lit while it follows.',
+    target: '.status-row',
+    title: 'What it’s doing',
+    text: 'Loading, listening, following, or why it hasn’t found the ayah yet. The dot pulses while it searches and stays lit while it follows.',
   },
   {
     target: '#open-surahs',
-    title: 'surahs',
-    text: 'Choose a surah to read it. Listen then looks for the reciter in that surah only, which is quicker. With a surah open, the speaker button reads its translation aloud.',
+    title: 'Surahs',
+    text: 'Choose a surah to read it. With a surah open, Read aloud reads its translation, and Listen looks for the reciter in that surah only, which is quicker.',
   },
   {
     target: '#ayah-controls',
-    title: 'ayah',
-    text: 'The ayah you’re on. − and + move back and forward, or tap a verse. If it loses the reciter, or you lose your place, sync listens again.',
-  },
-  {
-    target: '#verse-options',
-    title: 'translation and tajweed',
-    text: 'The translation under each verse, which is the one read aloud. Tajweed colours the letters by their rules, and a key above each surah explains the colours and the stop signs.',
+    title: 'The ayah you’re on',
+    text: 'The arrows move back and forward, or tap a verse. If you lose your place, press Listen again.',
   },
   {
     target: '#open-settings',
-    title: 'settings',
+    title: 'Settings',
     text: () =>
-      `Choose what Listen does once it finds the ayah, the reading voice, colours and text sizes${
-        autoSearch.supported ? ', and auto search, which listens in the background and sends a notification for each surah it hears' : ''
+      `The text size, the translation and its voice, tajweed colours, and what Listen does${
+        autoSearch.supported ? '. Also auto search, which listens in the background and sends a notification for each surah it hears' : ''
       }. This tour is there too.`,
   },
 ];
@@ -56,6 +56,7 @@ export class Tutorial {
   #count;
   #title;
   #text;
+  #sizes;
   #skip;
   #back;
   #next;
@@ -71,13 +72,28 @@ export class Tutorial {
     this.#title = make('h2', { id: 'tutorial-title' });
     this.#text = make('p', { className: 'text' });
     this.#text.setAttribute('aria-live', 'polite');
-    this.#skip = make('button', { type: 'button', className: 'skip', textContent: 'skip' });
-    this.#back = make('button', { type: 'button', textContent: 'back' });
+    this.#sizes = make('div', { className: 'sizes' });
+    this.#sizes.setAttribute('role', 'group');
+    this.#sizes.setAttribute('aria-label', 'Text size');
+    for (const [size, name] of settings.TEXT_SIZES) {
+      const button = make('button', { type: 'button', textContent: name });
+      button.dataset.size = size;
+      button.addEventListener('click', () => settings.set('textSize', size));
+      this.#sizes.append(button);
+    }
+    // Chosen here or in the settings: the card's grown or shrunk, so it goes back in place.
+    settings.onChange((key) => {
+      if (key !== 'textSize') return;
+      this.#renderSizes();
+      if (this.open) requestAnimationFrame(() => this.#place()); // once the page has the new size
+    });
+    this.#skip = make('button', { type: 'button', className: 'skip', textContent: 'Skip' });
+    this.#back = make('button', { type: 'button', textContent: 'Back' });
     this.#next = make('button', { type: 'button', className: 'primary' });
     const actions = make('div', { className: 'actions' });
     actions.append(this.#skip, this.#back, this.#next);
     this.#card = make('div', { className: 'card' });
-    this.#card.append(this.#count, this.#title, this.#text, actions);
+    this.#card.append(this.#count, this.#title, this.#text, this.#sizes, actions);
     dialog.append(this.#spot, this.#card);
 
     this.#skip.addEventListener('click', () => dialog.close());
@@ -137,11 +153,17 @@ export class Tutorial {
     this.#count.textContent = `${index + 1} / ${this.#steps.length}`;
     this.#title.textContent = step.title;
     this.#text.textContent = typeof step.text === 'function' ? step.text() : step.text;
+    this.#sizes.hidden = !step.sizes;
+    this.#renderSizes();
     this.#skip.hidden = last;
     this.#back.hidden = index === 0;
-    this.#next.textContent = last ? 'done' : 'next';
+    this.#next.textContent = last ? 'Done' : 'Next';
     this.#place();
     this.#next.focus();
+  }
+
+  #renderSizes() {
+    for (const button of this.#sizes.children) button.setAttribute('aria-pressed', String(Number(button.dataset.size) === settings.get('textSize')));
   }
 
   // Lights up the step's part of the page, and puts the card beside it: below,

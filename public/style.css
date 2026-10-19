@@ -11,9 +11,9 @@
 :root {
   --bg: #0b0e12;
   --panel: #12171d;
-  --border: #1f2731;
+  --border: #26303b;
   --text: #e6edf3;
-  --dim: #7d8896;
+  --dim: #94a0ad;
   --faint: #2c3540;
   --theme-accent: #7ee0a1;
   --on-accent: #0b0e12; /* text on the accent colour */
@@ -31,19 +31,24 @@
   --tj-ghunnah: var(--theme-tj-ghunnah);
   --tj-ra: var(--theme-tj-ra);
   --tj-waqf: var(--theme-tj-waqf);
-  /* Text sizes, from the settings */
+  /* Text sizes, from the settings: everything, then the verses' two kinds on top of that */
+  --text-scale: 1;
   --arabic-scale: 1;
   --translation-scale: 1;
-  --font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --arabic: 'KFGQPC Hafs', 'Noto Naskh Arabic', serif;
+
+  /* Everything is sized in rem, so the text size setting (and the browser's own) scales it all. */
+  font-size: calc(100% * var(--text-scale));
 }
 
 :root[data-theme='light'] {
   --bg: #f5f6f8;
   --panel: #ffffff;
-  --border: #d6dbe1;
+  --border: #cfd5dc;
   --text: #1a1f26;
-  --dim: #5f6b78;
+  --dim: #535e6a;
   --faint: #c8cfd7;
   --theme-accent: #1a8a52;
   --on-accent: #ffffff;
@@ -73,31 +78,29 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  /* In the app the page runs under the phone's status bar */
+  padding-top: env(safe-area-inset-top);
   background: var(--bg);
   color: var(--text);
-  font: 14px/1.5 var(--font);
+  font: 1rem/1.5 var(--font);
 }
 
+/* Big enough to hit without looking twice */
 button,
 select {
-  font: inherit;
-  color: var(--text);
-  background: var(--panel);
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 5px 12px;
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
   cursor: pointer;
 }
 
 button:hover,
 select:hover {
   border-color: var(--dim);
-}
-
-button.icon {
-  display: grid;
-  place-items: center;
-  padding: 5px 8px;
 }
 
 button[aria-pressed='true'] {
@@ -107,8 +110,15 @@ button[aria-pressed='true'] {
 
 button:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Icons grow with the text */
+button svg {
+  flex: none;
+  width: 1.375em;
+  height: 1.375em;
 }
 
 button.primary {
@@ -116,8 +126,6 @@ button.primary {
   border-color: var(--accent);
   color: var(--on-accent);
   font-weight: 700;
-  /* As wide as its longest label, so switching to Stop doesn't reflow the top bar */
-  min-width: calc(6ch + 26px);
 }
 
 select:disabled {
@@ -129,82 +137,29 @@ select:disabled {
   color: var(--dim);
 }
 
-/* --- top bar --- */
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 20px;
-  /* In the app the page runs under the phone's status bar */
-  padding-top: max(12px, calc(env(safe-area-inset-top) + 8px));
-  border-bottom: 1px solid var(--border);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 700;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--faint);
-}
-
-[data-status='searching'] .dot {
-  background: var(--accent);
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-[data-status='following'] .dot {
-  background: var(--accent);
-}
-
-.meter {
-  flex: 1;
-  margin: 0;
-  overflow: hidden;
-  text-align: center;
-  color: var(--accent);
-  opacity: 0.75;
-  font: inherit;
-  letter-spacing: 1px;
-}
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-/* --- now playing --- */
+/* --- the surah's heading, above its verses --- */
 
 .now-playing {
   display: grid;
-  grid-template-columns: 96px 1fr auto;
-  gap: 18px;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem 1rem;
   align-items: center;
-  width: 100%;
-  max-width: 900px;
+  max-width: 34rem;
   margin: 0 auto;
-  padding: 18px 20px 8px;
+  padding: 0.5rem 0.75rem 1rem;
 }
 
 .glyph {
   display: grid;
   place-items: center;
-  width: 96px;
-  height: 96px;
+  width: 3.5rem;
+  height: 3.5rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 12px;
   background: var(--panel);
   color: var(--accent);
-  font: 700 34px/1 var(--font);
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
 .meta {
@@ -213,94 +168,45 @@ select:disabled {
 
 .meta h1 {
   margin: 0;
-  font-size: 1.25rem;
-  line-height: 1.3;
+  font-size: 1.375rem;
+  line-height: 1.25;
 }
 
 .meta p {
-  margin: 2px 0 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin: 0.125rem 0 0;
 }
 
-/* "Meccan · 83 verses", and the "this surah only" switch beside it */
-.details {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px 10px;
-}
-
+/* A tick box, so it's plain whether it's on */
 #scope {
-  margin-top: 2px;
-  padding: 0 8px;
-  color: var(--dim);
-  font-size: 12px;
+  display: inline-flex;
+  grid-column: 1 / -1;
+  justify-self: start;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#scope::before {
+  content: '\2713';
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--dim);
+  border-radius: 5px;
+  color: transparent;
+  font-size: 0.875rem;
+  font-weight: 700;
 }
 
 #scope[aria-pressed='true'] {
-  color: var(--accent);
+  color: var(--text);
 }
 
-.progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  color: var(--dim);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.bar {
-  flex: 1;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--faint);
-  overflow: hidden;
-}
-
-#bar-fill {
-  width: 0;
-  height: 100%;
+#scope[aria-pressed='true']::before {
+  border-color: var(--accent);
   background: var(--accent);
-}
-
-/* Reading the translation aloud, where a player's play button would be */
-.reader {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-}
-
-#read {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 7px 12px;
-}
-
-#read-speed {
-  padding: 1px 8px;
-  color: var(--dim);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-#read .wave {
-  opacity: 0.35;
-}
-
-#read.speaking .wave {
-  opacity: 1;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-#read.speaking .wave + .wave {
-  animation-delay: 0.3s;
+  color: var(--on-accent);
 }
 
 /* --- verses --- */
@@ -310,8 +216,8 @@ select:disabled {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 max(20px, calc(50% - 380px));
-  mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);
+  padding: 0 max(0.75rem, calc(50% - 400px));
+  mask-image: linear-gradient(transparent, #000 5%, #000 95%, transparent);
   scrollbar-width: none;
   transition: opacity 0.4s;
 }
@@ -329,46 +235,42 @@ select:disabled {
 }
 
 .stale .verses {
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
 .message {
   margin: 0;
+  padding: 0 1rem;
   text-align: center;
   color: var(--dim);
-  font-size: 1.05rem;
+  font-size: 1.125rem;
 }
 
+/* The others stay readable; the current one is lit up. */
 .verse {
   position: relative;
-  margin: 0;
-  padding: 0.9em 0;
-  font-size: clamp(1.05rem, 2.4vw, 1.55rem);
-  line-height: 1.35;
+  margin: 0.25rem 0;
+  padding: 0.75rem;
+  border-radius: 14px;
   text-align: center;
   color: var(--dim);
-  opacity: 0.6;
   cursor: pointer;
   transition:
     color 0.3s,
-    opacity 0.3s;
-}
-
-.verse.past {
-  opacity: 0.3;
+    background-color 0.3s;
 }
 
 .verse.current,
 .verse.reading {
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
   color: var(--text);
-  opacity: 1;
 }
 
 .verse .arabic,
 .basmala {
   margin: 0;
   font-family: var(--arabic);
-  font-size: calc(clamp(1.45rem, 3.6vw, 2.1rem) * var(--arabic-scale));
+  font-size: calc(clamp(1.75rem, 4.5vw, 2.4rem) * var(--arabic-scale));
   line-height: 2.1;
 }
 
@@ -378,28 +280,20 @@ select:disabled {
 }
 
 .verse .translation {
-  margin: 0.4em auto 0;
-  max-width: 60ch;
-  font-size: calc(0.9rem * var(--translation-scale));
-  line-height: 1.55;
-}
-
-.verse.current .translation {
-  color: var(--dim);
+  margin: 0.5em auto 0;
+  max-width: 38em;
+  font-size: calc(1.125rem * var(--translation-scale));
+  line-height: 1.6;
 }
 
 /* The translation being read aloud, and the word being said in it */
-.verse.reading .translation {
-  color: var(--text);
-}
-
 .verse.reading .translation::before {
   content: '▶ ';
   color: var(--accent);
 }
 
 ::highlight(spoken) {
-  background-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 35%, transparent);
   color: var(--text);
 }
 
@@ -437,22 +331,22 @@ select:disabled {
 }
 
 .tajweed-key {
-  padding-bottom: 1.2em;
+  padding: 0.5rem 0 1.25rem;
   text-align: center;
   color: var(--dim);
-  font-size: 12px;
+  font-size: 0.875rem;
 }
 
 .tajweed-key p {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 2px 14px;
-  margin: 0 0 6px;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.5rem;
 }
 
 .tajweed-key .sign {
-  font: 1.1rem/1 var(--arabic);
+  font: 1.25rem/1 var(--arabic);
 }
 
 body:not(.tajweed) .tajweed-key,
@@ -460,47 +354,224 @@ body:not(.tajweed) .tajweed-key,
   display: none;
 }
 
-/* --- status bar --- */
+/* --- the bottom: status, the ayah, and the buttons --- */
 
-.statusbar {
+.bottom {
+  container-type: inline-size; /* the buttons rearrange themselves when it's narrow */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem max(1rem, calc(50% - 360px));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+}
+
+.status-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  padding: 8px 20px;
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
-  border-top: 1px solid var(--border);
+  gap: 0.625rem;
   color: var(--dim);
-  font-size: 12px;
 }
 
-.setting {
+#status {
+  flex: 1 1 10rem;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.dot {
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+[data-status='searching'] .dot {
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+[data-status='following'] .dot {
+  background: var(--accent);
+}
+
+#source {
+  flex: none;
+  min-height: 2.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.ayah-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.75rem;
 }
 
-.setting output {
-  min-width: 6ch;
-  color: var(--text);
+.ayah-row .arrow {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 3.25rem;
+  min-height: 3rem;
+  padding: 0;
+}
+
+.where {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+#ayah {
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--faint);
+  overflow: hidden;
+}
+
+#bar-fill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+}
+
+/* Read aloud, and its speed */
+.read-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+#read {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+#read.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#read .wave {
+  opacity: 0.35;
+}
+
+#read.speaking .wave {
+  opacity: 1;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+#read.speaking .wave + .wave {
+  animation-delay: 0.3s;
+}
+
+#read-speed {
+  flex: none;
   font-variant-numeric: tabular-nums;
 }
 
-.setting button,
-.setting select {
-  padding: 1px 8px;
-  font-size: 12px;
+/* Surahs, Listen (the big one) and Settings */
+.nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+}
+
+.nav-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 5rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.nav-button svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+#listen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 0.5rem;
+  min-height: 3.75rem;
+  border-radius: 14px;
+  font-size: 1.25rem;
+}
+
+#listen .stop,
+#listen.listening .mic {
+  display: none;
+}
+
+#listen.listening .stop {
+  display: block;
+}
+
+.meter {
+  flex-basis: 100%;
+  text-align: center;
+  font: 0.625rem/1.1 var(--mono);
+  letter-spacing: 1px;
+  white-space: pre;
+  opacity: 0.75;
+}
+
+.meter:empty {
+  display: none;
+}
+
+/* Too narrow for all three in a row (a small phone, or large text): Listen across
+   the top, and the speed is left to the settings */
+@container (max-width: 21rem) {
+  #read-speed,
+  #ayah .word {
+    display: none;
+  }
+  .nav {
+    grid-template-columns: 1fr 1fr;
+  }
+  #listen {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .nav-button {
+    flex-direction: row;
+    gap: 0.5rem;
+    min-height: 3rem;
+    font-size: 1rem;
+  }
 }
 
 /* --- settings --- */
 
 .settings {
-  width: min(560px, calc(100vw - 24px));
-  max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  width: min(560px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   padding: 0; /* so a click outside the content is a click on the backdrop */
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   background: var(--bg);
   color: var(--text);
 }
@@ -511,44 +582,43 @@ body:not(.tajweed) .tajweed-key,
 }
 
 .settings::backdrop {
-  background: rgb(0 0 0 / 0.55);
+  background: rgb(0 0 0 / 0.6);
 }
 
 .settings > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
 }
 
 .settings h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.25rem;
+}
+
+.settings h2:focus {
+  outline: none;
 }
 
 .settings .close {
-  padding: 2px 10px;
-  font-size: 18px;
-  line-height: 1.2;
+  width: 2.75rem;
+  padding: 0;
+  font-size: 1.75rem;
+  line-height: 1;
 }
 
 .settings-body {
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 0 16px 16px;
+  padding: 0 1rem 1rem;
 }
 
 .settings h3 {
-  margin: 18px 0 2px;
-  color: var(--dim);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.settings h3::before {
-  content: '# ';
+  margin: 1.5rem 0 0.25rem;
   color: var(--accent);
+  font-size: 1.0625rem;
 }
 
 .settings .row {
@@ -556,19 +626,26 @@ body:not(.tajweed) .tajweed-key,
   flex-wrap: wrap; /* the control goes under its label when there's no room beside it */
   align-items: center;
   justify-content: space-between;
-  gap: 6px 12px;
-  padding: 9px 0;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0;
   border-bottom: 1px solid var(--border);
 }
 
 .settings .row > label {
-  flex: 1 1 150px;
+  flex: 1 1 11rem;
+}
+
+/* A switch stays beside its label, however long the label */
+.settings .row > label:has(+ input.switch) {
+  flex-basis: 0;
 }
 
 .settings .row small {
   display: block;
+  margin-top: 0.125rem;
   color: var(--dim);
-  font-size: 11px;
+  font-size: 0.875rem;
+  line-height: 1.4;
 }
 
 .settings .row[inert] {
@@ -577,13 +654,14 @@ body:not(.tajweed) .tajweed-key,
 
 .settings .note {
   margin: 0;
-  padding: 9px 0;
+  padding: 0.75rem 0;
   border-bottom: 1px solid var(--border);
   color: var(--dim);
+  font-size: 0.9375rem;
 }
 
 .settings .credits {
-  font-size: 11px;
+  font-size: 0.8125rem;
 }
 
 .settings .credits a {
@@ -591,14 +669,14 @@ body:not(.tajweed) .tajweed-key,
 }
 
 .settings .preview {
-  margin: 10px 0 4px;
-  padding: 4px 10px;
+  margin: 0.75rem 0 0.25rem;
+  padding: 0.25rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--panel);
   text-align: center;
   font-family: var(--arabic);
-  font-size: calc(1.7rem * var(--arabic-scale));
+  font-size: calc(1.75rem * var(--arabic-scale));
   line-height: 2;
 }
 
@@ -610,10 +688,10 @@ input.switch {
   appearance: none;
   position: relative;
   flex: none;
-  width: 36px;
-  height: 20px;
+  width: 3.25rem;
+  height: 2rem;
   margin: 0;
-  border-radius: 10px;
+  border-radius: 1rem;
   background: var(--faint);
   cursor: pointer;
   transition: background 0.2s;
@@ -622,10 +700,10 @@ input.switch {
 input.switch::before {
   content: '';
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.625rem;
+  height: 1.625rem;
   border-radius: 50%;
   background: var(--text);
   transition: transform 0.2s;
@@ -636,21 +714,27 @@ input.switch:checked {
 }
 
 input.switch:checked::before {
-  transform: translateX(16px);
+  transform: translateX(1.25rem);
   background: var(--on-accent);
 }
 
 .choice {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  max-width: 100%;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   overflow: hidden;
 }
 
 .choice label {
-  padding: 4px 10px;
-  font-size: 12px;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.375rem 0.875rem;
   cursor: pointer;
 }
 
@@ -668,47 +752,96 @@ input.switch:checked::before {
 .choice label:has(input:checked) {
   background: var(--accent);
   color: var(--on-accent);
+  font-weight: 600;
 }
 
 .choice label:has(input:focus-visible),
 input.switch:focus-visible,
 .settings input:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 
 .range,
 .colour {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.colour select {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 /* Beside its label when there's room, otherwise across the whole row */
 .range {
-  flex: 1 0 190px;
+  flex: 1 1 12rem;
 }
 
+/* A thumb big enough to catch */
 .range input {
   flex: 1;
   min-width: 0;
+  height: 2.75rem;
   margin: 0;
-  accent-color: var(--accent);
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.range input::-webkit-slider-runnable-track {
+  height: 0.375rem;
+  border-radius: 0.1875rem;
+  background: var(--faint);
+}
+
+.range input::-webkit-slider-thumb {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: -0.6875rem;
+  border: 3px solid var(--bg);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  appearance: none;
+}
+
+.range input::-moz-range-track {
+  height: 0.375rem;
+  border-radius: 0.1875rem;
+  background: var(--faint);
+}
+
+.range input::-moz-range-progress {
+  height: 0.375rem;
+  border-radius: 0.1875rem;
+  background: var(--accent);
+}
+
+.range input::-moz-range-thumb {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 3px solid var(--bg);
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .range output {
-  min-width: 7ch;
+  min-width: 3.5rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 input[type='color'] {
-  width: 34px;
-  height: 24px;
+  width: 3rem;
+  height: 2.25rem;
   padding: 2px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--panel);
   cursor: pointer;
 }
@@ -719,7 +852,7 @@ input[type='color']::-webkit-color-swatch-wrapper {
 
 input[type='color']::-webkit-color-swatch {
   border: none;
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 input[type='color']:disabled {
@@ -727,10 +860,9 @@ input[type='color']:disabled {
   cursor: default;
 }
 
-.colour button,
 .settings select {
-  padding: 1px 8px;
-  font-size: 12px;
+  max-width: 100%;
+  padding: 0.375rem 0.75rem;
 }
 
 .colour button {
@@ -738,10 +870,13 @@ input[type='color']:disabled {
 }
 
 .button-link {
+  display: inline-flex;
   flex: none;
-  padding: 5px 12px;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
   border: 1px solid var(--accent);
-  border-radius: 6px;
+  border-radius: 10px;
   color: var(--accent);
   text-decoration: none;
 }
@@ -752,19 +887,21 @@ input[type='color']:disabled {
 }
 
 .button-link:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 
 .reset-all {
   width: 100%;
-  margin-top: 20px;
+  min-height: 3rem;
+  margin-top: 1.5rem;
   color: var(--dim);
 }
 
 .close-bottom {
   width: 100%;
-  margin-top: 10px;
+  min-height: 3rem;
+  margin-top: 0.75rem;
 }
 
 /* --- the tutorial --- */
@@ -791,9 +928,9 @@ input[type='color']:disabled {
 
 .tutorial .spot {
   position: absolute;
-  border-radius: 10px;
-  outline: 2px solid var(--accent);
-  box-shadow: 0 0 0 200vmax rgb(0 0 0 / 0.6);
+  border-radius: 14px;
+  outline: 3px solid var(--accent);
+  box-shadow: 0 0 0 200vmax rgb(0 0 0 / 0.65);
   pointer-events: none;
   transition-property: top, left, width, height;
   transition-duration: 0.25s;
@@ -805,10 +942,10 @@ input[type='color']:disabled {
 
 .tutorial .card {
   position: absolute;
-  width: min(340px, calc(100vw - 32px));
-  padding: 12px 16px 14px;
+  width: min(24rem, calc(100vw - 32px));
+  padding: 1rem 1.25rem 1.25rem;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   background: var(--bg);
   box-shadow: 0 8px 30px rgb(0 0 0 / 0.35);
   transition-property: top, left;
@@ -818,27 +955,40 @@ input[type='color']:disabled {
 .tutorial .count {
   margin: 0;
   color: var(--dim);
-  font-size: 11px;
+  font-size: 0.875rem;
 }
 
 .tutorial h2 {
-  margin: 2px 0 6px;
-  font-size: 1rem;
-}
-
-.tutorial h2::before {
-  content: '# ';
-  color: var(--accent);
+  margin: 0.125rem 0 0.5rem;
+  font-size: 1.25rem;
 }
 
 .tutorial .text {
-  margin: 0 0 14px;
+  margin: 0 0 1rem;
+}
+
+/* The first step's choice of text size */
+.tutorial .sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: -0.25rem 0 1.25rem;
+}
+
+.tutorial .sizes button {
+  flex: 1 1 auto;
+}
+
+.tutorial .sizes button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
 }
 
 .tutorial .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .tutorial .skip {
@@ -848,24 +998,69 @@ input[type='color']:disabled {
 
 /* --- the surah list --- */
 
-.surah-filter {
-  box-sizing: border-box;
-  width: 100%;
-  margin: 14px 0 6px;
-  padding: 7px 10px;
+/* All surahs, or the ones auto search has heard */
+.tabs {
+  display: flex;
+  margin-top: 1rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.tabs button {
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.tabs button + button {
+  border-left: 1px solid var(--border);
+}
+
+.tabs button[aria-selected='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.surah-list .day {
+  padding: 1rem 0.25rem 0.25rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.surah-list .clear-history {
+  display: block;
+  width: 100%;
+  min-height: 3rem;
+  margin-top: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--dim);
+  text-align: center;
+}
+
+.surah-filter {
+  width: 100%;
+  min-height: 3rem;
+  margin: 1rem 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   background: var(--panel);
   color: var(--text);
   font: inherit;
 }
 
 .surah-filter:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--accent);
   outline-offset: 1px;
 }
 
 .surah-list {
+  container-type: inline-size; /* the Arabic name goes under the English one when it's narrow */
   margin: 0;
   padding: 0;
   list-style: none;
@@ -873,11 +1068,12 @@ input[type='color']:disabled {
 
 .surah-list button {
   display: grid;
-  grid-template-columns: 3.5ch 1fr auto;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0 10px;
+  gap: 0 0.75rem;
   width: 100%;
-  padding: 8px 4px;
+  min-height: 3.75rem;
+  padding: 0.625rem 0.25rem;
   border: 0;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
@@ -892,102 +1088,53 @@ input[type='color']:disabled {
 
 .surah-list .number {
   grid-row: span 2;
+  text-align: center;
   color: var(--accent);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.surah-list .english {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .surah-list .arabic {
   grid-row: span 2;
   font-family: var(--arabic);
-  font-size: 22px;
+  font-size: 1.625rem;
   line-height: 1.4;
 }
 
 .surah-list .meaning {
   grid-column: 2;
   color: var(--dim);
-  font-size: 11px;
+  font-size: 0.875rem;
+}
+
+@container (max-width: 18rem) {
+  .surah-list button {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+  }
+  .surah-list .number {
+    grid-row: span 3;
+  }
+  .surah-list .arabic {
+    grid-row: auto;
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 .surah-list .note {
-  padding: 12px 4px;
+  padding: 0.75rem 0.25rem;
   color: var(--dim);
 }
 
 @keyframes pulse {
   50% {
     opacity: 0.3;
-  }
-}
-
-@keyframes blink {
-  50% {
-    opacity: 0;
-  }
-}
-
-@media (max-width: 640px) {
-  /* Two rows: the dot, the surahs, settings and Listen; then the audio source (if any) beside the level meter */
-  .topbar {
-    flex-wrap: wrap;
-    gap: 0 10px;
-    padding: 10px 16px;
-    padding-top: max(10px, calc(env(safe-area-inset-top) + 8px));
-  }
-  .controls {
-    display: contents;
-  }
-  #open-surahs,
-  #open-settings,
-  #listen {
-    order: 1;
-  }
-  #open-surahs {
-    margin-left: auto;
-  }
-  .topbar::after {
-    content: '';
-    order: 2;
-    flex-basis: 100%; /* the line break */
-  }
-  .controls > :not(#listen, #open-settings, #open-surahs) {
-    order: 3;
-    margin-top: 10px;
-  }
-  .meter {
-    order: 4;
-    min-width: 0;
-    margin-top: 10px;
-  }
-  .now-playing {
-    grid-template-columns: 64px 1fr auto;
-    gap: 14px;
-    padding: 14px 16px 4px;
-  }
-  .glyph {
-    width: 64px;
-    height: 64px;
-    font-size: 24px;
-  }
-  /* Just the speaker: the meta needs the room */
-  #read .label {
-    display: none;
-  }
-  #read {
-    padding: 9px 14px;
-  }
-  .verses {
-    padding-inline: 16px;
-  }
-  .statusbar {
-    padding-inline: 16px;
-  }
-  /* These step through ayahs, so give thumbs room. */
-  #ayah-down,
-  #ayah-up,
-  #ayah-sync {
-    padding: 6px 18px;
-    font-size: 15px;
   }
 }
 

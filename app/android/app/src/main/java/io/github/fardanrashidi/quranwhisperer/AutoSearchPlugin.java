@@ -13,8 +13,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
  * Auto search (AutoSearchService) for app/src/api.js: whether it's on, turning it
- * on and off, adding its Quick Settings tile, and an "open" event ({ surah, ayah })
- * when the app is opened from one of its notifications.
+ * on and off, adding its Quick Settings tile, what it's heard (AutoSearchHistory),
+ * and an "open" event ({ surah, ayah }) when the app is opened from one of its notifications.
  */
 @CapacitorPlugin(name = "AutoSearch")
 public class AutoSearchPlugin extends Plugin {
@@ -59,6 +59,20 @@ public class AutoSearchPlugin extends Plugin {
     @PluginMethod
     public void stop(PluginCall call) {
         getContext().stopService(new Intent(getContext(), AutoSearchService.class));
+        call.resolve();
+    }
+
+    /** → { entries: [{ surah, from, to, start, end }] }, oldest first (see AutoSearchHistory) */
+    @PluginMethod
+    public void history(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("entries", AutoSearchHistory.list(getContext()));
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void clearHistory(PluginCall call) {
+        AutoSearchHistory.clear(getContext());
         call.resolve();
     }
 

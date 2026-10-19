@@ -235,6 +235,7 @@ public class AutoSearchService extends Service {
     private void found(QuranSearch search, QuranSearch.Match match, boolean isNew) {
         QuranSearch.Surah surah = search.surah(match.surah);
         String place = surah.englishName + " " + match.surah + ":" + match.ayah;
+        AutoSearchHistory.heard(this, match.surah, match.ayah, isNew);
         setStatus(place);
         update("Found " + place + " · still listening");
         int id = FOUND_ID + match.surah;

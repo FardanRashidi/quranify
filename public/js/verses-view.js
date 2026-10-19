@@ -35,17 +35,18 @@ export class VersesView {
     }).observe(el);
   }
 
-  message(text) {
+  /** @param {HTMLElement[]} [headers] shown above it */
+  message(text, headers = []) {
     this.#setLines([]);
-    this.#el.append(paragraph('message', text));
+    this.#el.append(...headers, paragraph('message', text));
   }
 
   /**
    * @param {{ basmala: Segment[] | null, verses: { number: number, segments: Segment[], translation: string | null }[] }} surah
-   * @param {HTMLElement | null} [header] shown above the surah
+   * @param {HTMLElement[]} [headers] shown above the surah
    * @param {string} [language] the translation's, from translations.js
    */
-  showVerses({ basmala, verses }, header = null, language = 'en') {
+  showVerses({ basmala, verses }, headers = [], language = 'en') {
     this.#setLines(
       verses.map((v) => {
         const block = document.createElement('div');
@@ -67,7 +68,7 @@ export class VersesView {
       }),
     );
     if (basmala) this.#el.prepend(arabicParagraph('basmala', basmala));
-    if (header) this.#el.prepend(header);
+    this.#el.prepend(...headers);
   }
 
   /**

@@ -13,91 +13,105 @@
     <script type="module" src="js/app.js"></script>
   </head>
   <body data-status="idle">
-    <header class="topbar">
-      <!-- Just the status dot: grey when idle, pulsing while it searches, steady while it follows -->
-      <div class="brand" title="Quran Whisperer"><span class="dot" aria-hidden="true"></span></div>
-      <pre class="meter" id="meter" aria-hidden="true"></pre>
-      <div class="controls">
-        <select id="source" aria-label="Audio source">
-          <option value="mic">Microphone</option>
-          <option value="tab">Tab / system audio</option>
-        </select>
-        <button id="open-surahs" class="icon" aria-label="Surahs" title="Choose a surah to read, or to listen for the reciter in">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 7c-2-1.6-5-2-8-1.5v13c3-.5 6-.1 8 1.5 2-1.6 5-2 8-1.5v-13c-3-.5-6-.1-8 1.5z" />
-            <path d="M12 7v13" />
-          </svg>
-        </button>
-        <button id="open-settings" class="icon" aria-label="Settings" title="Settings">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-            <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" />
-            <circle cx="16" cy="6" r="2" />
-            <circle cx="10" cy="12" r="2" />
-            <circle cx="18" cy="18" r="2" />
-          </svg>
-        </button>
-        <!-- What it does after finding the ayah is up to the settings' "listen button" section -->
-        <button id="listen" class="primary" title="Listen and find the ayah  ( space )">Listen</button>
-      </div>
-    </header>
-
+    <!-- The surah's heading: app.js puts it at the top of the verses, and it scrolls with them -->
     <section class="now-playing" id="now-playing" hidden>
       <div id="glyph" class="glyph" aria-hidden="true"></div>
       <div class="meta">
         <h1 id="title"></h1>
         <p id="subtitle"></p>
-        <div class="details">
-          <p id="details" class="dim"></p>
-          <button id="scope" aria-pressed="false" hidden title="Listen looks for the reciter in this surah only">this surah only</button>
-        </div>
-        <div class="progress">
-          <span id="elapsed"></span>
-          <div class="bar"><div id="bar-fill"></div></div>
-          <span id="duration"></span>
-        </div>
+        <p id="details" class="dim"></p>
       </div>
-      <div class="reader" id="reader" hidden>
-        <button id="read" aria-pressed="false" aria-label="Read the translation aloud" title="Read the translation aloud  ( T )">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" />
-            <path class="wave" d="M15.5 9a4.5 4.5 0 0 1 0 6" />
-            <path class="wave" d="M18.5 6a8.5 8.5 0 0 1 0 12" />
-          </svg>
-          <span class="label">read aloud</span>
-        </button>
-        <button id="read-speed" title="Reading speed">1×</button>
-      </div>
+      <button id="scope" aria-pressed="false" hidden title="Listen looks for the reciter in this surah only">Search this surah only</button>
     </section>
 
     <main class="verses" id="verses"></main>
 
-    <footer class="statusbar">
-      <span id="status" role="status"></span>
-      <span class="setting" id="ayah-controls">
-        <span class="dim">ayah</span>
-        <output id="ayah">–</output>
-        <button id="ayah-down" title="Previous ayah  ( [ or ← )">−</button>
-        <button id="ayah-up" title="Next ayah  ( ] or → )">+</button>
-        <button id="ayah-sync" title="Listen again  ( S )">sync</button>
-      </span>
-      <span class="setting" id="verse-options">
-        <label class="setting">
-          <span class="dim">translation</span>
-          <!-- Filled in by app.js, from translations.js -->
-          <select id="translation"></select>
-        </label>
-        <button id="tajweed" aria-pressed="true" title="Tajweed colours and waqf signs">tajweed</button>
-      </span>
+    <!-- Everything to press, at the bottom where a thumb reaches it -->
+    <footer class="bottom">
+      <div class="status-row">
+        <!-- grey when idle, pulsing while it searches, steady while it follows -->
+        <span class="dot" aria-hidden="true"></span>
+        <span id="status" role="status"></span>
+        <select id="source" aria-label="Audio source">
+          <option value="mic">Microphone</option>
+          <option value="tab">Tab / system audio</option>
+        </select>
+      </div>
+      <div class="ayah-row" id="ayah-controls" hidden>
+        <button id="ayah-down" class="arrow" aria-label="Previous ayah" title="Previous ayah  ( [ or ← )">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </button>
+        <div class="where">
+          <output id="ayah"></output>
+          <div class="bar" aria-hidden="true"><div id="bar-fill"></div></div>
+        </div>
+        <button id="ayah-up" class="arrow" aria-label="Next ayah" title="Next ayah  ( ] or → )">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+      <!-- Reading the translation aloud, with a surah open -->
+      <div class="read-row" id="reader" hidden>
+        <button id="read" title="Read the translation aloud  ( T )">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" />
+            <path class="wave" d="M15.5 9a4.5 4.5 0 0 1 0 6" />
+            <path class="wave" d="M18.5 6a8.5 8.5 0 0 1 0 12" />
+          </svg>
+          <span class="label">Read aloud</span>
+        </button>
+        <button id="read-speed" title="Reading speed">Speed 1×</button>
+      </div>
+      <nav class="nav">
+        <button id="open-surahs" class="nav-button" title="Choose a surah to read, or to listen for the reciter in">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 7c-2-1.6-5-2-8-1.5v13c3-.5 6-.1 8 1.5 2-1.6 5-2 8-1.5v-13c-3-.5-6-.1-8 1.5z" />
+            <path d="M12 7v13" />
+          </svg>
+          <span>Surahs</span>
+        </button>
+        <!-- What it does after finding the ayah is up to the settings' "Listen button" section -->
+        <button id="listen" class="primary" title="Listen and find the ayah  ( space )">
+          <svg class="mic" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="3" width="6" height="11" rx="3" />
+            <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+          </svg>
+          <svg class="stop" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+            <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+          </svg>
+          <span class="label">Listen</span>
+          <!-- How loud what it hears is, while it listens -->
+          <span class="meter" id="meter" aria-hidden="true"></span>
+        </button>
+        <button id="open-settings" class="nav-button" title="Settings">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" />
+            <circle cx="16" cy="6" r="2" />
+            <circle cx="10" cy="12" r="2" />
+            <circle cx="18" cy="18" r="2" />
+          </svg>
+          <span>Settings</span>
+        </button>
+      </nav>
     </footer>
 
     <!-- Filled in by surah-picker.js -->
     <dialog id="surahs" class="settings surahs" aria-labelledby="surahs-title">
       <header>
-        <h2 id="surahs-title">surahs</h2>
+        <!-- Focused when it opens, rather than the × -->
+        <h2 id="surahs-title" tabindex="-1" autofocus>Surahs</h2>
         <button type="button" class="close" aria-label="Close the surah list">×</button>
       </header>
       <div class="settings-body">
-        <input type="search" class="surah-filter" placeholder="name, meaning or number" aria-label="Find a surah" autocomplete="off" />
+        <!-- In the app: every surah, or the ones auto search has heard -->
+        <div class="tabs" role="tablist" aria-label="Which surahs" hidden>
+          <button role="tab" aria-selected="true" data-tab="all">All surahs</button>
+          <button role="tab" aria-selected="false" data-tab="heard">Heard</button>
+        </div>
+        <input type="search" class="surah-filter" placeholder="Name, meaning or number" aria-label="Find a surah" autocomplete="off" />
         <ol class="surah-list"></ol>
       </div>
     </dialog>
@@ -105,7 +119,7 @@
     <!-- Filled in by settings-panel.js -->
     <dialog id="settings" class="settings" aria-labelledby="settings-title">
       <header>
-        <h2 id="settings-title">settings</h2>
+        <h2 id="settings-title" tabindex="-1" autofocus>Settings</h2>
         <button type="button" class="close" aria-label="Close settings">×</button>
       </header>
       <div class="settings-body"></div>
