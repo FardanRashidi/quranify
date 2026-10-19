@@ -43,8 +43,9 @@ export class VersesView {
   /**
    * @param {{ basmala: Segment[] | null, verses: { number: number, segments: Segment[], translation: string | null }[] }} surah
    * @param {HTMLElement | null} [header] shown above the surah
+   * @param {string} [language] the translation's, from translations.js
    */
-  showVerses({ basmala, verses }, header = null) {
+  showVerses({ basmala, verses }, header = null, language = 'en') {
     this.#setLines(
       verses.map((v) => {
         const block = document.createElement('div');
@@ -56,7 +57,12 @@ export class VersesView {
           textContent: v.number.toLocaleString('ar-EG'),
         }));
         block.append(arabic);
-        if (v.translation) block.append(paragraph('translation', v.translation));
+        if (v.translation) {
+          const translation = paragraph('translation', v.translation);
+          translation.lang = language;
+          translation.dir = 'auto'; // right to left for Urdu, Persian...
+          block.append(translation);
+        }
         return block;
       }),
     );
@@ -81,13 +87,18 @@ export class VersesView {
     this.#scrollTo(this.#lines[index], firstJump || !this.smooth || reducedMotion.matches ? 'instant' : 'smooth');
   }
 
-  /** Marks the verse whose translation is being read aloud, or none (-1). */
-  setReading(index) {
+  /**
+   * Marks the verse whose translation is being read aloud, or none (-1).
+   * @param {'follow' | false} scroll 'follow' scrolls to it as setCurrent does (for reading
+   *   that's behind the reciter, so it's the one to keep in view)
+   */
+  setReading(index, scroll = false) {
     if (index === this.#reading) return;
     this.#lines[this.#reading]?.classList.remove('reading');
     this.#lines[index]?.classList.add('reading');
     this.#reading = index;
     spoken?.clear();
+    if (scroll && index >= 0 && this.follow) this.#scrollTo(this.#lines[index], this.smooth && !reducedMotion.matches ? 'smooth' : 'instant');
   }
 
   /** Marks the word being read aloud: characters [start, end) of the verse's translation. */

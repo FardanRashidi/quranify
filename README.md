@@ -1,7 +1,7 @@
 # Quran Whisperer
 
 A web app that listens to a Quran recitation, works out the surah and ayah, and
-shows the verses with an English or Malay translation.
+shows the verses with a translation in any of 46 languages.
 
 It has one main button. Press **Listen**, play a recitation, and by default it:
 
@@ -11,8 +11,8 @@ It has one main button. Press **Listen**, play a recitation, and by default it:
   seconds then, and up to 5 seconds apart early in a long one;
 - **reads the translation aloud**, a word highlighted at a time, each ayah as
   the reciter reaches it. English is a real person reading it: Ibrahim Walk's
-  recording of Saheeh International, the translation shown. Malay uses the
-  device's own voice.
+  recording of Saheeh International, the translation shown. Other languages
+  use the device's own voice.
 
 Following and reading aloud can each be turned off in the settings, under
 **listen button**. Then Listen just finds your place and stops listening, or
@@ -224,10 +224,22 @@ well it keeps up.
    the speed of the recording takes effect straight away; with a device's
    voice, a change of speed or voice says the current sentence again.
 3. **− / +**, the arrow keys, or tapping a verse reads from there instead.
-4. **While following**, it reads each ayah as the reciter reaches it, so you
-   hear the meaning of what's being recited. If the reciter has moved on by
-   the time it finishes, it skips to where they are. If it finishes first, it
-   waits for the reciter to start the next ayah. **Stop** stops both.
+4. **While following**, it reads each ayah once the reciter reaches it, so
+   you hear the meaning of what's being recited. A translation often takes
+   longer to say than the Arabic, so the reciter can get ahead. Then it still
+   reads every ayah in turn (**read every ayah**, on by default), 10% faster
+   for each ayah it's behind, up to 1.5× (and never past 2×). The footer says
+   how far behind it is, and the verse being read stays in view, with the
+   reciter's still highlighted. If it finishes first, it waits for the
+   reciter to start the next ayah. **Stop** stops both.
+5. **When the reciter goes somewhere else**, reading goes with them instead of
+   carrying on through ayahs they've left. That's another surah (the imam
+   moving on from Al-Fatiha, say), a part of the same surah that doesn't carry
+   on from where they were, or more than 10 ayahs ahead of the reading. A
+   reciter going back over the last few words (or the last ayah or two) is
+   repeating them, so that isn't read again: reading waits for them to come
+   past it. With **read every ayah** off, it skips to the reciter's ayah each
+   time it finishes one, as it used to.
 
 The microphone would hear the voice through the speaker and get confused. So
 while it reads, following pauses its checks, and afterwards it only listens to
@@ -245,17 +257,19 @@ The voices:
   recording can't be played (offline, say), the device's voice reads that
   ayah instead. Any of the device's English voices can be chosen instead in
   the settings.
-- **Malay** uses the device's voice: a Malay one if it has one, otherwise an
-  Indonesian one, which is close enough to follow. Nobody has recorded the
-  Basmeih translation.
+- **Every other language** uses the device's voice for it. Malay can also use
+  an Indonesian voice, which is close enough to follow. Nobody has recorded
+  the Basmeih translation.
 - Windows, macOS, iOS and Android come with voices. Chrome and Firefox on
   Linux only have them when `speech-dispatcher` is installed.
 - On Android you can add voices under *Settings → System → Languages → Text-to-speech
   output*.
 
-Where a browser has no voices at all, English still uses the recording, and for
-Malay the button is hidden and the settings say so. The button is also hidden
-when the translation is set to **None**.
+When the device has no voice for the translation's language, the button is
+hidden, and the settings say so and where to add one. English always has the
+recording. The app looks at the voices again whenever you come back to it, so
+one installed meanwhile counts straight away. The button is also hidden when
+the translation is set to **None**.
 
 ### Keeping the screen on
 
@@ -273,8 +287,72 @@ doesn't go to sleep. When it stops, the screen goes back to its usual timeout.
 
 ### Translations and tajweed
 
-Translations: **English** (Saheeh International), **Melayu** (Abdullah
-Muhammad Basmeih), or **None**.
+Pick the translation in the footer or under settings → verses: one for each
+of 46 languages, or **None**. Each is downloaded from alquran.cloud the first
+time it's chosen (about 0.4 MB) and kept, so after that it works offline. If it
+can't be downloaded then (no internet), the surah is shown without it, and the
+line under the surah's name says so. Urdu, Persian, Pashto, Sindhi, Kurdish,
+Uyghur and Dhivehi are written right to left, and shown that way.
+[`public/js/translations.js`](public/js/translations.js) holds the list: the
+a well-known translation in each language that alquran.cloud has.
+
+<details>
+<summary>The 46 translations</summary>
+
+| Language | In English | Translator | Edition |
+| --- | --- | --- | --- |
+| Azərbaycanca | Azerbaijani | Vasim Mammadaliyev and Ziya Bunyadov | `az.mammadaliyev` |
+| Bahasa Indonesia | Indonesian | The Indonesian Ministry of Religious Affairs | `id.indonesian` |
+| Bosanski | Bosnian | Besim Korkut | `bs.korkut` |
+| Čeština | Czech | Ivan Hrbek | `cs.hrbek` |
+| Deutsch | German | A. S. F. Bubenheim and N. Elyas | `de.bubenheim` |
+| English | English | Saheeh International | `en.sahih` |
+| Español | Spanish | Julio Cortés | `es.cortes` |
+| Français | French | Muhammad Hamidullah | `fr.hamidullah` |
+| Hausa | Hausa | Abubakar Mahmoud Gumi | `ha.gumi` |
+| Italiano | Italian | Hamza Roberto Piccardo | `it.piccardo` |
+| Kiswahili | Swahili | Ali Muhsin Al-Barwani | `sw.barwani` |
+| Melayu | Malay | Abdullah Muhammad Basmeih | `ms.basmeih` |
+| Nederlands | Dutch | Sofian S. Siregar | `nl.siregar` |
+| Norsk | Norwegian | Einar Berg | `no.berg` |
+| Polski | Polish | Józef Bielawski | `pl.bielawskiego` |
+| Português | Portuguese | Samir El-Hayek | `pt.elhayek` |
+| Română | Romanian | George Grigore | `ro.grigore` |
+| Shqip | Albanian | Sherif Ahmeti | `sq.ahmeti` |
+| Soomaali | Somali | Mahmud Muhammad Abduh | `so.abduh` |
+| Svenska | Swedish | Knut Bernström | `sv.bernstrom` |
+| Taqbaylit | Kabyle | Ramdane At Mansour | `ber.mensur` |
+| Türkçe | Turkish | Diyanet İşleri | `tr.diyanet` |
+| Български | Bulgarian | Tzvetan Theophanov | `bg.theophanov` |
+| Нохчийн | Chechen | Magomedov | `ce.magomedov` |
+| Русский | Russian | Elmir Kuliev | `ru.kuliev` |
+| Татарча | Tatar | Yakub ibn Nugman | `tt.nugman` |
+| Тоҷикӣ | Tajik | AbdolMohammad Ayati | `tg.ayati` |
+| Ўзбекча | Uzbek | Muhammad Sodik Muhammad Yusuf | `uz.sodik` |
+| اردو | Urdu | Fateh Muhammad Jalandhry | `ur.jalandhry` |
+| پښتو | Pashto | Abdul Wali | `ps.abdulwali` |
+| سنڌي | Sindhi | Taj Mehmood Amroti | `sd.amroti` |
+| فارسی | Persian | Mohammad Mahdi Fooladvand | `fa.fooladvand` |
+| کوردی | Central Kurdish | Burhan Muhammad-Amin | `ku.asan` |
+| ئۇيغۇرچە | Uyghur | Muhammad Saleh | `ug.saleh` |
+| ދިވެހި | Divehi | The Office of the President of the Maldives | `dv.divehi` |
+| አማርኛ | Amharic | Sadiq and Sani Habib | `am.sadiq` |
+| हिन्दी | Hindi | Suhel Farooq Khan and Saifur Rahman Nadwi | `hi.hindi` |
+| বাংলা | Bangla | Muhiuddin Khan | `bn.bengali` |
+| தமிழ் | Tamil | Jan Trust Foundation | `ta.tamil` |
+| മലയാളം | Malayalam | Cheriyamundam Abdul Hameed and Kunhi Mohammed Parappoor | `ml.abdulhameed` |
+| සිංහල | Sinhala | Naseem Ismail and Masoor Maulana Kaleel | `si.naseemismail` |
+| ไทย | Thai | The King Fahd Quran Complex | `th.thai` |
+| မြန်မာ | Burmese | Ghazi Muhammad Hashim | `my.ghazi` |
+| 中文 | Chinese | Ma Jian | `zh.jian` |
+| 日本語 | Japanese | not named | `ja.japanese` |
+| 한국어 | Korean | not named | `ko.korean` |
+
+alquran.cloud names no translator for the Japanese and Korean ones. It lists
+48 languages, but its Arabic one is a transliteration, and its Bashkir one
+(`ba.mehanovic`) is really a second Bosnian translation, so both are left out.
+
+</details>
 
 The verses are shown in the Uthmani text and font of the King Fahd Complex
 (KFGQPC), the same as the Madinah mushaf, with each ayah number in an
@@ -287,7 +365,8 @@ them:
 - purple for a heavy ra (ra' tebal).
 
 The waqf signs are picked out in amber. A key above each surah explains the
-colours and the signs, in Malay when the translation is Melayu. The **tajweed**
+colours and the signs, in Malay when the translation is Melayu (English
+otherwise). The **tajweed**
 button in the footer turns them off. In settings you can also turn off or
 recolour each one, and hide the key.
 
@@ -313,12 +392,12 @@ bottom, Esc, Back, or a tap outside it.
 | ------------- | -------- |
 | listen button | what Listen does once it has found the ayah: follow the reciter (on), read the translation aloud (on) |
 | appearance    | theme (dark, light, or auto to follow the device), accent colour, level meter, animations |
-| verses        | translation; Arabic and translation text size; tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour. A sample ayah (51:21) shows the result as you go. |
+| verses        | translation (any of 46 languages, or none); Arabic and translation text size; tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour. A sample ayah (51:21) shows the result as you go. |
 | following     | scroll along to each ayah (on); the shortest wait between checks (2 s, from 1 to 5) and the longest (5 s, from 2 to 15) |
-| reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation's language (English: **Ibrahim Walk (recorded)**, or any of the device's English voices), with a **try** button to hear it; keep listening while reading (off) |
+| reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation shown (English: **Ibrahim Walk (recorded)**, or any of the device's English voices; other languages: the device's voices for them), with a **try** button to hear it, kept for each language; or a note when the device has none; read every ayah while following (on); keep listening while reading (off) |
 | listening     | audio source; which microphone (when there's more than one); how much audio each check sends (8 s); how long it listens without placing the reciter before giving up (60 s) |
 | auto search   | Android app only: listening in the background, on or off; **add** the Quick Settings tile (Android 13 and later). See [Auto search](#auto-search). |
-| about         | the [tutorial](#the-tutorial); a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, translations, recorded voice and speech model |
+| about         | the [tutorial](#the-tutorial); a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, the translation shown, the recorded voice and the speech model |
 
 The footer's translation and **tajweed** controls and the speed button change
 the same settings, and the panel keeps up with them. Microphones only have
@@ -438,17 +517,17 @@ onnxruntime, on the CPU.
 ### Quran text and the index
 
 [`lib/quran.js`](lib/quran.js) does the search. The server's
-[`server/quran.js`](server/quran.js) downloads five editions the first time
-(6.3 MB in `.cache/quran/`), four from [alquran.cloud](https://alquran.cloud)
-and one from [quran.com](https://quran.com):
+[`server/quran.js`](server/quran.js) downloads three editions the first time
+(3.9 MB in `.cache/quran/`), two from [alquran.cloud](https://alquran.cloud)
+and one from [quran.com](https://quran.com), and each translation the first
+time it's asked for (0.8–1.5 MB):
 
 | Edition              | Used for                                                       |
 | -------------------- | -------------------------------------------------------------- |
 | `quran-simple-clean` | matching: plain spelling, closest to speech-to-text            |
 | `qpc-hafs`           | display: the KFGQPC's Uthmani text, which its font is made for |
 | `quran-tajweed`      | tajweed rules marked inline, and the surah names               |
-| `en.sahih`           | English translation (Saheeh International)                     |
-| `ms.basmeih`         | Malay translation (Abdullah Muhammad Basmeih)                  |
+| `en.sahih` and so on | the translation shown (see [Translations and tajweed](#translations-and-tajweed)) |
 
 The matching edition puts the Basmala at the start of each surah's first ayah,
 and the index strips it there. The display editions leave it out, and the app
@@ -728,8 +807,11 @@ refrains included, in order. Ya-Sin went from 36:4 to 36:23 the same way.
 [`public/js/reader.js`](public/js/reader.js) reads an ayah's translation:
 
 - **Voice.** The one picked in the settings, else the device's default for the
-  language, else the first that fits. English takes `en-US`, then any `en`.
-  Malay takes `ms-MY`, `ms`, then `id-ID` and `id`.
+  language, else the first that fits. Each translation in `translations.js`
+  says which voices fit, best first: English takes `en-US`, then any `en`;
+  Malay takes `ms-MY`, `ms`, then `id-ID` and `id`; most just take their
+  language's code. With none on the device, the translation can't be read
+  aloud (`supportedFor()`), except English with the recording.
 - **Pieces.** Chrome stops some voices (Google's online ones) after about 15
   seconds of speech. So a long translation is said in pieces of about 160
   characters (fewer below 1×), split at the end of a sentence, clause or word.
@@ -741,9 +823,28 @@ refrains included, in order. Ya-Sin went from 36:4 to 36:23 the same way.
   Without them, only the ayah is marked as being read.
 
 `readAloud()` in `app.js` runs the loop. On its own it reads ayah after ayah to
-the end of the surah. While following, it reads the ayah the reciter is on.
-When it finishes, it either jumps to where the reciter has got to, or waits
-for the next ayah to start.
+the end of the surah. While following, `nextToRead()` picks what comes after
+each ayah: the next one if the reciter has got to it, or nothing yet (it waits
+for `onVerse()`). It reads the reciter's own ayah instead after a jump, and
+when it's more than 10 behind. A jump is a match in another surah, or one that
+doesn't carry on from the last word heard (`continues` from `locate()`: no
+more than 30 words back or 400 on). `Reader.boost` speeds the voice up while
+it's behind: the recording at once, a device voice from its next piece.
+
+With a test voice slowed down to fall behind (0.7 s a word), 155 s of Al-Mulk
+(Minshawi) turning into Ya-Sin (Sudais), through a speaker:
+
+| Read every ayah | Ayahs read                                   | Skipped              |
+| --------------- | -------------------------------------------- | -------------------- |
+| on              | Al-Mulk 1–4, then Ya-Sin 6–10                | none                 |
+| off             | Al-Mulk 1, 2, 4, then Ya-Sin 4, 5, 7, 9, 10, 12 | Al-Mulk 3; Ya-Sin 6, 8, 11 |
+
+With it on, the voice went up to 1.1× and 1.2× when one or two ayahs
+behind, and moved to Ya-Sin as soon as a check heard it. Through a speaker
+that's a while, since checks only run between ayahs: Ya-Sin started at 60 s,
+Al-Mulk 4 was still read from 66 s, and Ya-Sin was heard at 85 s. With **keep listening while reading** (headphones), the change was
+heard at 71 s, and it cut short the Al-Mulk ayah it had just started. At a
+normal speed (0.15 s a word) it kept up, read every ayah, and made no change.
 
 With the microphone as the source, the checks don't run while the voice is
 speaking. Afterwards they send only the audio recorded since it stopped, once
@@ -854,7 +955,7 @@ the app.
 | `POST /api/quran/warmup`                   | nothing                                      | `{ ready: true }` once the model and index are loaded |
 | `POST /api/quran/recognize?near=N&surah=S` | 16 kHz mono s16le PCM, at most 12 s; `near` (a word's place in the whole Quran) and `surah` (1–114, to look in that surah alone) are optional | `{ match: { surah, ayah, word, ayahEnd, score, ambiguous, continues } or null, transcript }` |
 | `GET /api/quran/surahs`                    |                                              | `{ surahs: [{ number, name, englishName, englishNameTranslation, revelationType, ayahs }] }`, `ayahs` being how many |
-| `GET /api/quran/surah/:n?translation=en`   | `translation`: `en`, `ms` or `none`          | `{ surah: { number, name, englishName, englishNameTranslation, revelationType, basmala, verses: [{ number, text, segments, translation, firstWord, words }] } }`; `segments` are `[text, colour]` pieces (see Tajweed colours), `basmala` is the same, or `null` for Al-Fatiha and At-Tawbah, and `firstWord` / `words` place each ayah in the index |
+| `GET /api/quran/surah/:n?translation=en`   | `translation`: a code from [`translations.js`](public/js/translations.js), or `none` | `{ surah: { number, name, englishName, englishNameTranslation, revelationType, basmala, verses: [{ number, text, segments, translation, firstWord, words }], translationError? } }`; `segments` are `[text, colour]` pieces (see Tajweed colours), `basmala` is the same, or `null` for Al-Fatiha and At-Tawbah, `firstWord` / `words` place each ayah in the index, and `translationError` says why the translation is missing when it couldn't be downloaded |
 | any other `GET`                            |                                              | a file from `public/` |
 
 Errors come back as `{ error }`: 400 for a `surah` that isn't 1–114, 404 for
@@ -894,7 +995,8 @@ machine's hostname, `127.0.0.1` and every LAN IPv4 address, and saves it in
 
 - **Recognition:** the audio is transcribed on your server and goes nowhere
   else. The model (from Hugging Face) and the Quran text (from alquran.cloud
-  and quran.com) are each downloaded once.
+  and quran.com) are each downloaded once, and so is each translation, the
+  first time it's chosen.
 - **Reading aloud, the recorded voice:** the phone or computer reading aloud
   downloads each ayah's recording from `cdn.islamic.network`, alquran.cloud's
   CDN, about 80 KB an ayah on average. That server sees your IP address and
@@ -1253,6 +1355,7 @@ public/
   js/surah-picker.js     the surah list
   js/settings.js         settings: defaults, saving, change notifications
   js/settings-panel.js   the settings panel
+  js/translations.js     the translations: language, edition, translator, voices
   js/tutorial.js         the tour of the buttons, shown the first time
   js/api.js              backend calls and the screen wake lock (the app swaps in app/src/api.js)
 app/              Android app: the same page, with the server's work done on the phone
@@ -1299,15 +1402,24 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   Assistant on 2 cores), following was on the right ayah 80% of the time instead
   of 90%, and 67% for Sudais's quick Ya-Sin.
 - **Reading aloud through a speaker** (on by default) pauses following's
-  checks while the voice speaks, so a fast reciter can get ahead and some ayahs
-  go unread. Headphones with **keep listening while reading** avoid that, and
-  so does turning reading aloud off under **listen button**.
+  checks while the voice speaks. Every ayah is still read, but the reading
+  can fall behind the reciter, and it only finds out where they've got to
+  between ayahs, a few seconds after the voice stops. So it can be slow to
+  notice that they've moved to another surah. Headphones with **keep listening
+  while reading** avoid that, and so does turning reading aloud off under
+  **listen button**.
 - **The word highlight** of a device's voice depends on the voice reporting its
   words. Some don't (eSpeak NG on Android, for one), and then only the ayah is
   marked. The recorded voice's highlight comes from a speech model's timings,
   so now and then a word is marked a little early or late.
-- **The recorded voice needs the internet**, and it's English only: there's
-  no recording of the Malay translation.
+- **The recorded voice needs the internet**, and it's English only. No one
+  has recorded the Malay translation. alquran.cloud has ayah-by-ayah
+  recordings of a few others (Urdu, French, Russian, Chinese, Uzbek, Kazakh),
+  which the app doesn't use yet.
+- **Other languages need a voice on the device** to be read aloud. Android
+  adds voices under *Settings → System → Languages → Text-to-speech output*.
+  The Android emulator had English voices only, so reading other languages
+  aloud was tried in Chrome (Indonesian), not in the app.
 - **The recorded voice's rights:** no source found says who owns the
   recording (it's also sold as an Audible audiobook). alquran.cloud, whose CDN
   the app plays it from, says in its
@@ -1353,7 +1465,10 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 - [Capacitor](https://capacitorjs.com): the Android app.
 - [alquran.cloud](https://alquran.cloud): Quran text (from
   [Tanzil](https://tanzil.net), whose terms ask that it be named with a link,
-  as settings → about does), the tajweed-marked text, and translations.
+  as settings → about does), the tajweed-marked text, and the translations
+  (each translator is listed under
+  [Translations and tajweed](#translations-and-tajweed), and settings → about
+  names the one shown).
 - [King Fahd Glorious Quran Printing Complex](https://qurancomplex.gov.sa)
   (KFGQPC): the Uthmani text shown, and the font KFGQPC Uthmanic Script Hafs
   (version 0.18, as `public/fonts/UthmanicHafs1Ver18.woff2`). The font's

@@ -4,30 +4,44 @@
 import * as speech from './speech.js';
 import * as recording from './recording.js';
 import * as settings from './settings.js';
+import { translation } from './translations.js';
 
-// The languages each translation can be read in, best first. Malay voices are
-// rare, and Indonesian is close enough to follow.
-const LANGUAGES = { en: ['en-US', 'en'], ms: ['ms-MY', 'ms', 'id-ID', 'id'] };
-const VOICE_SETTING = { en: 'voiceEn', ms: 'voiceMs' };
+// The languages a translation can be read in, best first, as voices name them
+const tags = (language) => translation(language)?.speech ?? [language];
 // Characters per piece at normal speed. Chrome stops some voices (Google's
 // online ones) after about 15 s, and this is about 10 s of speech.
 const PIECE = 160;
+const MAX_BOOSTED = 2; // catching up never reads faster than this, unless the speed setting already is
 /** The voice setting's value for the recording, rather than one of the device's voices. */
 export const RECORDED = 'ibrahim-walk';
 
 /** Whether this browser can read anything aloud. */
 export const supported = speech.supported || recording.supported;
 
-/** Whether it can read a translation ('en' or 'ms'): the recording is English only. */
-export const supportedFor = (language) => speech.supported || (language === 'en' && recording.supported);
+let deviceVoices = null; // the device's voices, once listed
 
-const recorded = (language) => language === 'en' && recording.supported && settings.get(VOICE_SETTING.en) === RECORDED;
+/**
+ * Whether it can read a translation (a code from translations.js): the recording
+ * is English only, and otherwise the device needs a voice for the language.
+ * Until the voices have been listed (see `refreshVoices`), it might.
+ */
+export const supportedFor = (language) =>
+  (language === 'en' && recording.supported) ||
+  (speech.supported && (deviceVoices === null || deviceVoices.some((v) => tags(language).some((tag) => sameLanguage(v.lang, tag)))));
+
+/** Lists the device's voices again, for `supportedFor`. They can change while the app's away. */
+export async function refreshVoices() {
+  deviceVoices = await speech.voices();
+}
+
+const recorded = (language) => language === 'en' && recording.supported && settings.get('voice-en') === RECORDED;
 
 export class Reader {
   #speaking = false;
   #playing = false; // the recording, rather than a device voice
   #again = false;
   #generation = 0; // bumped by stop(), so a read that's still starting up knows to give up
+  #boost = 1;
 
   /** Whether something is being said right now. */
   get speaking() {
@@ -35,7 +49,23 @@ export class Reader {
   }
 
   /**
-   * Reads `text`, a translation in `language` ('en' or 'ms').
+   * How much faster than the speed setting to read, to catch up with a reciter
+   * (1: no faster). The recording changes speed straight away, a device's
+   * voice from its next piece.
+   */
+  set boost(value) {
+    if (value === this.#boost) return;
+    this.#boost = value;
+    if (this.#playing) recording.setRate(this.#rate());
+  }
+
+  #rate() {
+    const speed = settings.get('readingSpeed');
+    return Math.min(speed * this.#boost, Math.max(speed, MAX_BOOSTED));
+  }
+
+  /**
+   * Reads `text`, a translation in `language` (a code from translations.js).
    * @param {(start: number, end: number) => void} [onWord] the word being said, as its place in `text`
    * @param {{ surah: number, ayah: number }} [place] which ayah it is, for the recording
    * @returns {Promise<boolean>} true once it's been read to the end, false if it was stopped
@@ -60,7 +90,7 @@ export class Reader {
   async #play(place, text, onWord) {
     this.#speaking = this.#playing = true;
     try {
-      return await recording.play(place, text, { rate: settings.get('readingSpeed'), onWord });
+      return await recording.play(place, text, { rate: this.#rate(), onWord });
     } finally {
       this.#speaking = this.#playing = false;
     }
@@ -69,7 +99,7 @@ export class Reader {
   /** A device's voice, a piece at a time. Gives up, leaving #again set, if the recording is chosen while it reads. */
   async #say(text, language, onWord, generation, toRecording) {
     if (!speech.supported) throw new Error('the recording couldn’t be played');
-    for (const [start, end] of pieces(text, PIECE * Math.min(1, settings.get('readingSpeed')))) {
+    for (const [start, end] of pieces(text, PIECE * Math.min(1, this.#rate()))) {
       do {
         this.#again = false;
         const voice = await voiceFor(language);
@@ -79,8 +109,8 @@ export class Reader {
         try {
           done = await speech.speak(text.slice(start, end), {
             voice: voice?.id,
-            lang: voice?.lang ?? LANGUAGES[language][0],
-            rate: settings.get('readingSpeed'),
+            lang: voice?.lang ?? tags(language)[0],
+            rate: this.#rate(),
             onWord: (a, b) => onWord?.(start + a, start + b),
           });
         } finally {
@@ -98,7 +128,7 @@ export class Reader {
   again() {
     if (!this.#speaking) return;
     // The recording just changes speed; it doesn't need to start again.
-    if (this.#playing && recorded('en')) return recording.setRate(settings.get('readingSpeed'));
+    if (this.#playing && recorded('en')) return recording.setRate(this.#rate());
     this.#again = true;
     if (this.#playing) recording.stop();
     else speech.stop();
@@ -114,13 +144,13 @@ export class Reader {
 
 /** The voices that can read a translation, best first, as { id, name, lang }. */
 export async function voicesFor(language) {
-  const all = await speech.voices();
-  return [...new Set(LANGUAGES[language].flatMap((tag) => all.filter((v) => sameLanguage(v.lang, tag))))];
+  const all = (deviceVoices = await speech.voices());
+  return [...new Set(tags(language).flatMap((tag) => all.filter((v) => sameLanguage(v.lang, tag))))];
 }
 
 /** The voice to use: the one chosen in the settings, else the device's own for the language, else the first. */
 export async function voiceFor(language) {
-  const chosen = settings.get(VOICE_SETTING[language]);
+  const chosen = settings.get(`voice-${language}`);
   const voices = await voicesFor(language);
   return voices.find((v) => v.id === chosen) ?? voices.find((v) => v.default) ?? voices[0] ?? null;
 }
@@ -139,7 +169,9 @@ function pieces(text, size) {
     let end = Math.min(text.length, start + size);
     if (end < text.length) {
       const piece = text.slice(start, end);
-      const at = lastBreak(piece, /[.!?;:]["'”’)\]]*\s/g) ?? lastBreak(piece, /[,—–]\s|\s[-–—]\s/g) ?? lastBreak(piece, /\s/g);
+      // Sentence ends, then clauses, then spaces. 。！？؟؛। and ，、، end them with no space after (Chinese, Japanese, Arabic script, Hindi).
+      const at =
+        lastBreak(piece, /[.!?;:]["'”’)\]]*\s|[。！？؟؛।]/g) ?? lastBreak(piece, /[,—–]\s|\s[-–—]\s|[，、،]/g) ?? lastBreak(piece, /\s/g);
       if (at) end = start + at;
     }
     result.push([start, end]);

@@ -6,7 +6,8 @@ import { arabicParagraph } from './verses-view.js';
 import * as speech from './speech.js';
 import { supported as canReadAloud, supportedFor, voiceFor, voicesFor, RECORDED } from './reader.js';
 import * as recording from './recording.js';
-import { autoSearch } from './api.js';
+import { autoSearch, fetchSurah } from './api.js';
+import { TRANSLATIONS, translation } from './translations.js';
 
 // 51:21, "And in yourselves. Then will you not see?": short, with all five colours.
 const PREVIEW = [
@@ -23,29 +24,34 @@ const PREVIEW = [
   ['ونَ ', ''],
 ];
 
-// What the voice's "try" button says: 1:1 in each translation.
+// What the voice's "try" button says: 1:1 in the translation. Other languages
+// take it from the translation itself, which is downloaded by then.
 const SAMPLE = {
   en: 'In the name of Allah, the Entirely Merciful, the Especially Merciful.',
   ms: 'Dengan nama Allah, Yang Maha Pemurah, lagi Maha Mengasihani.',
 };
+const sample = async (language) => SAMPLE[language] ?? (await fetchSurah(1, language).catch(() => null))?.verses[0].translation;
 
 const GITHUB = 'https://github.com/FardanRashidi';
 
-// Where the text, translations, voice and model come from, as their terms ask
-// (Tanzil's: name it and link to tanzil.net). Links are [text, href].
-const CREDITS = [
-  'Quran text from ',
-  ['Tanzil', 'https://tanzil.net'],
-  ' and the King Fahd Complex (KFGQPC), whose font this is. Translations: Saheeh International (English) and Abdullah Muhammad Basmeih (Malay), through ',
-  ['alquran.cloud', 'https://alquran.cloud'],
-  '. Recorded English voice: Ibrahim Walk. Speech model: Tarteel’s whisper-base-ar-quran (Apache-2.0).',
-];
+// Where the text, the translation shown, the voice and the model come from, as
+// their terms ask (Tanzil's: name it and link to tanzil.net). Links are [text, href].
+function credits() {
+  const shown = translation(settings.get('translation'));
+  return [
+    'Quran text from ',
+    ['Tanzil', 'https://tanzil.net'],
+    ' and the King Fahd Complex (KFGQPC), whose font this is. ',
+    ...(shown ? [`Translation (${shown.name}): ${shown.translator ?? 'translator not named'}, through `, ['alquran.cloud', 'https://alquran.cloud'], '. '] : []),
+    'Recorded English voice: Ibrahim Walk. Speech model: Tarteel’s whisper-base-ar-quran (Apache-2.0).',
+  ];
+}
 
 const percent = (value) => `${value}%`;
 const seconds = (value) => `${value} s`;
 const NEXT_LISTEN = 'takes effect the next time you press Listen';
 const tajweedOn = () => settings.get('tajweed');
-const translated = (language) => () => supportedFor(language) && settings.get('translation') === language;
+const translatedTo = (language) => settings.get('translation') === language;
 
 /**
  * Each section's rows. `when` hides a row (or leaves out a section) that doesn't
@@ -84,7 +90,13 @@ const SECTIONS = [
     title: 'verses',
     rows: [
       { type: 'preview' },
-      { key: 'translation', label: 'translation', type: 'choice', options: [['en', 'English'], ['ms', 'Melayu'], ['none', 'none']] },
+      {
+        key: 'translation',
+        label: 'translation',
+        type: 'select',
+        options: [...TRANSLATIONS.map(({ code, name }) => [code, name]), ['none', 'none']],
+        hint: 'downloaded the first time you choose it',
+      },
       { key: 'arabicSize', label: 'arabic size', type: 'range', min: 70, max: 200, step: 5, format: percent },
       { key: 'translationSize', label: 'translation size', type: 'range', min: 70, max: 200, step: 5, format: percent },
       { key: 'tajweed', label: 'tajweed colours', type: 'toggle' },
@@ -126,15 +138,25 @@ const SECTIONS = [
         format: (value) => `${value}×`,
         when: () => canReadAloud,
       },
+      // For the translation shown
       {
-        key: 'voiceEn',
         label: 'voice',
         type: 'voice',
-        language: 'en',
-        when: translated('en'),
-        hint: 'Ibrahim Walk is a recording of the translation shown (Saheeh International), played from the internet',
+        when: () => !translatedTo('none') && supportedFor(settings.get('translation')),
+        hint: () => (translatedTo('en') ? 'Ibrahim Walk is a recording of the translation shown (Saheeh International), played from the internet' : ''),
       },
-      { key: 'voiceMs', label: 'voice', type: 'voice', language: 'ms', when: translated('ms') },
+      {
+        type: 'note',
+        text: () => `this device has no voice for ${translation(settings.get('translation'))?.name}, so it can’t be read aloud. You can add one in the device’s text-to-speech settings`,
+        when: () => canReadAloud && !translatedTo('none') && !supportedFor(settings.get('translation')),
+      },
+      {
+        key: 'readEveryAyah',
+        label: 'read every ayah',
+        type: 'toggle',
+        hint: 'while following: each ayah in turn, faster (up to 1.5×) when the reciter gets ahead. Off: it skips to the ayah the reciter is on',
+        when: () => canReadAloud,
+      },
       {
         key: 'listenWhileReading',
         label: 'keep listening while reading',
@@ -224,7 +246,12 @@ export class SettingsPanel {
     addEventListener('popstate', () => {
       if (dialog.open) dialog.close();
     });
-    settings.onChange(() => this.refresh());
+    settings.onChange((key) => {
+      if (key === 'translation' && this.open) this.#listVoices();
+      this.refresh();
+    });
+    // back from installing a voice
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && this.open && this.#listVoices());
   }
 
   get open() {
@@ -237,6 +264,10 @@ export class SettingsPanel {
     this.refresh();
     this.#dialog.showModal();
     listMicrophones(this.#rows.find((r) => r.spec.type === 'microphone'));
+    this.#listVoices();
+  }
+
+  #listVoices() {
     for (const row of this.#rows) if (row.spec.type === 'voice') listVoices(row);
   }
 
@@ -256,11 +287,14 @@ function build(spec) {
     row.append(Object.assign(document.createElement('span'), { className: 'ayah-number', textContent: '٢١' }));
     return { row };
   }
-  if (spec.type === 'note') return { row: Object.assign(document.createElement('p'), { className: 'note', textContent: spec.text }) };
+  if (spec.type === 'note') {
+    const row = Object.assign(document.createElement('p'), { className: 'note' });
+    return { row, update: () => (row.textContent = textOf(spec.text)) };
+  }
   if (spec.type === 'credits') {
     const row = Object.assign(document.createElement('p'), { className: 'note credits' });
-    row.append(...CREDITS.map((part) => (typeof part === 'string' ? part : Object.assign(document.createElement('a'), { href: part[1], target: '_blank', rel: 'noopener', textContent: part[0] }))));
-    return { row };
+    const link = ([text, href]) => Object.assign(document.createElement('a'), { href, target: '_blank', rel: 'noopener', textContent: text });
+    return { row, update: () => row.replaceChildren(...credits().map((part) => (typeof part === 'string' ? part : link(part)))) };
   }
 
   const id = `setting-${++uid}`;
@@ -268,12 +302,22 @@ function build(spec) {
   row.className = 'row';
   row.hidden = spec.type === 'microphone'; // until there's more than one to choose from
   const label = Object.assign(document.createElement('label'), { id: `${id}-label`, htmlFor: id, textContent: spec.label });
-  if (spec.hint) label.append(Object.assign(document.createElement('small'), { textContent: spec.hint }));
+  const hint = spec.hint ? document.createElement('small') : null;
+  if (hint) label.append(hint);
   row.append(label);
   const { control, update } = CONTROLS[spec.type](spec, id);
   row.append(control);
-  return { row, update };
+  return {
+    row,
+    update: () => {
+      if (hint) hint.textContent = textOf(spec.hint);
+      update?.();
+    },
+  };
 }
+
+// Text that can depend on the settings: a string, or a function giving one.
+const textOf = (text) => (typeof text === 'function' ? text() : text);
 
 const CONTROLS = {
   toggle({ key }, id) {
@@ -296,6 +340,13 @@ const CONTROLS = {
       return input;
     });
     return { control: group, update: () => inputs.forEach((input) => (input.checked = input.value === settings.get(key))) };
+  },
+
+  select({ key, options }, id) {
+    const select = Object.assign(document.createElement('select'), { id });
+    select.append(...options.map(([value, text]) => new Option(text, value)));
+    select.addEventListener('change', () => settings.set(key, select.value));
+    return { control: select, update: () => (select.value = settings.get(key)) };
   },
 
   range({ key, min, max, step, format }, id) {
@@ -356,25 +407,30 @@ const CONTROLS = {
     };
   },
 
-  // A voice for one translation, and a button to hear it. Filled in when the
-  // panel opens (see listVoices), since the browser may still be loading them.
-  voice({ key, language }, id) {
+  // The voice for the translation shown, and a button to hear it. Filled in when
+  // the panel opens or the translation changes (see listVoices), since the
+  // browser may still be loading them.
+  voice(spec, id) {
     const control = document.createElement('div');
     control.className = 'colour';
     const select = Object.assign(document.createElement('select'), { id });
-    const sample = Object.assign(document.createElement('button'), { type: 'button', textContent: 'try', title: 'Hear this voice' });
-    select.addEventListener('change', () => settings.set(key, select.value));
-    sample.addEventListener('click', async () => {
-      if (settings.get(key) === RECORDED) {
-        const played = await recording.play({ surah: 1, ayah: 1 }, SAMPLE[language], { rate: settings.get('readingSpeed') });
+    const tryIt = Object.assign(document.createElement('button'), { type: 'button', textContent: 'try', title: 'Hear this voice' });
+    const language = () => settings.get('translation');
+    select.addEventListener('change', () => settings.set(`voice-${language()}`, select.value));
+    tryIt.addEventListener('click', async () => {
+      const lang = language();
+      const text = await sample(lang);
+      if (!text) return;
+      if (settings.get(`voice-${lang}`) === RECORDED) {
+        const played = await recording.play({ surah: 1, ayah: 1 }, text, { rate: settings.get('readingSpeed') });
         if (played !== null) return; // otherwise the device's voice, as when reading
       }
-      const voice = await voiceFor(language);
-      speech.speak(SAMPLE[language], { voice: voice?.id, lang: voice?.lang ?? language, rate: settings.get('readingSpeed') }).catch((err) => console.warn(err));
+      const voice = await voiceFor(lang);
+      speech.speak(text, { voice: voice?.id, lang: voice?.lang ?? lang, rate: settings.get('readingSpeed') }).catch((err) => console.warn(err));
     });
-    control.append(sample, select);
+    control.append(tryIt, select);
     const update = () => {
-      select.value = settings.get(key);
+      select.value = settings.get(`voice-${language()}`);
       if (select.selectedIndex < 0) select.value = ''; // not on this device
     };
     return { control, update };
@@ -454,16 +510,17 @@ async function listMicrophones(entry) {
   entry.update();
 }
 
-// The voices that can read a translation. Without one, the device reads it in
-// whatever voice it has, which may not know the language.
+// The voices that can read the translation shown.
 async function listVoices(entry) {
   const select = entry.row.querySelector('select');
-  const voices = await voicesFor(entry.spec.language);
+  const language = settings.get('translation');
+  const voices = await voicesFor(language);
+  if (language !== settings.get('translation')) return; // changed again meanwhile
   const options = [
     new Option(voices.length ? 'automatic' : 'none for this language on this device', ''),
     ...voices.map((v) => new Option(`${v.name} (${v.lang})`, v.id)),
   ];
-  if (entry.spec.language === 'en' && recording.supported) options.unshift(new Option('Ibrahim Walk (recorded)', RECORDED));
+  if (language === 'en' && recording.supported) options.unshift(new Option('Ibrahim Walk (recorded)', RECORDED));
   select.replaceChildren(...options);
   entry.update();
 }

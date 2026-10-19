@@ -4,7 +4,8 @@ import { SettingsPanel } from './settings-panel.js';
 import { SurahPicker } from './surah-picker.js';
 import { Tutorial } from './tutorial.js';
 import { Follower } from './follow.js';
-import { Reader, supportedFor } from './reader.js';
+import { Reader, supportedFor, refreshVoices } from './reader.js';
+import { TRANSLATIONS } from './translations.js';
 import * as settings from './settings.js';
 import * as api from './api.js';
 
@@ -21,6 +22,11 @@ const MIN_AUDIBLE = 3; // seconds of actual sound a clip needs before it's worth
 const MIN_AUDIBLE_IN_SURAH = 2;
 const LOST_AFTER = 12; // following: seconds without placing the reciter before the verses dim
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2]; // what the reading speed button steps through
+// Reading every ayah while following: this much faster for each ayah the
+// reciter is ahead, up to the most. Further behind than that, it skips to them.
+const CATCH_UP = 0.1;
+const MAX_CATCH_UP = 1.5;
+const MAX_BEHIND = 10;
 const NAME = 'Quran Whisperer';
 const METER_BARS = 24;
 const METER_CHARS = ' ▁▂▃▄▅▆▇█';
@@ -121,6 +127,7 @@ const state = {
   // reading aloud
   reading: false, // reading the translation aloud, ayah after ayah
   readingAyah: null, // the ayah being read; null between ayahs (waiting for the reciter to reach the next)
+  lastRead: null, // following: the last ayah read to the end in this surah, so the next can follow it; null after a jump
   readSession: 0, // bumped whenever a read in progress should be dropped
   readEndedAt: -Infinity, // when the voice last went quiet, so checks can leave it out
   readError: '',
@@ -147,6 +154,7 @@ async function start(follow = settings.get('listenFollow')) {
   listener.onEnded = stop;
   state.session++;
   state.following = follow;
+  state.lastRead = null;
   state.readOnFind = settings.get('listenRead') && !state.reading;
   state.listenStartedAt = performance.now();
   state.note = '';
@@ -262,13 +270,25 @@ function onVerse(match, endedAt) {
   if (!target.unsure) state.heardAt = performance.now();
   state.placed = true;
   const moved = target.surah !== state.surah?.number || target.ayah !== state.ayah;
-  if (state.surah?.number === target.surah) setAyah(target.ayah, state.following && wasFound ? 'follow' : true);
-  else showSurah(target.surah, target.ayah);
+  // The reciter went somewhere that doesn't carry on from where they were: another
+  // surah, or another part of this one (a repeat of the last few words still carries on).
+  const jumped = wasFound && (target.surah !== state.surah?.number || !match.continues);
+  if (state.surah?.number === target.surah) {
+    if (jumped) state.lastRead = null;
+    // Reading that's behind the reciter keeps the verse being read in view instead.
+    setAyah(target.ayah, !(state.following && wasFound) ? true : readingLeads() ? false : 'follow');
+  } else showSurah(target.surah, target.ayah);
   const startsReading = state.readOnFind && !state.unsure && !state.reading;
   if (!state.unsure) state.readOnFind = false;
   if (startsReading) startReading();
-  // Reading along: start on this ayah if the last one's done (otherwise it carries on here when it is).
-  else if (moved && state.reading && (!state.following || state.readingAyah === null)) readAloud();
+  else if (moved && state.reading) {
+    if (!state.following || jumped) readAloud(); // from here (another surah: once it's loaded)
+    else if (state.readingAyah === null) {
+      // Done with the last one: on to the next, if the reciter has got to it.
+      const next = nextToRead();
+      if (next !== null) readAloud(next);
+    } else reader.boost = catchUp(); // still reading one: a little faster, if they've got ahead
+  }
 
   if (state.unsure) {
     setStatus('searching');
@@ -345,28 +365,33 @@ function startReading() {
   if (!canRead()) return;
   state.reading = true;
   state.readError = '';
+  state.lastRead = null;
   readAloud();
 }
 
 /**
- * (Re)starts reading from the ayah on screen. On its own it carries on to the end
- * of the surah; following, it reads each ayah as the reciter reaches it.
+ * (Re)starts reading, from the ayah on screen unless told otherwise. On its own it
+ * carries on to the end of the surah. Following, it reads each ayah once the
+ * reciter has reached it: every one in turn, or (with read every ayah off) the
+ * one they're on, skipping any they've passed.
  */
-async function readAloud() {
+async function readAloud(from = state.ayah) {
   const session = pauseReading();
+  let ayah = from;
   while (state.reading && session === state.readSession) {
     const verses = state.surah?.verses;
     if (!verses) return renderReading(); // still loading: showSurah starts again
-    const verse = verses[state.ayah - 1];
+    const verse = verses[ayah - 1];
     if (!verse?.translation) return stopReading();
-    state.readingAyah = state.ayah;
-    versesView.setReading(state.ayah - 1);
+    state.readingAyah = ayah;
+    versesView.setReading(ayah - 1, readingLeads() ? 'follow' : false);
+    reader.boost = catchUp();
     renderReading();
     let finished;
     try {
       finished = await reader.read(verse.translation, settings.get('translation'), (start, end) => versesView.markWord(start, end), {
         surah: state.surah.number,
-        ayah: state.readingAyah,
+        ayah,
       });
     } catch (err) {
       console.error(err);
@@ -377,13 +402,45 @@ async function readAloud() {
     state.readEndedAt = performance.now();
     if (!finished) return stopReading();
     if (state.following) {
-      if (state.ayah !== state.readingAyah) continue; // the reciter moved on while this was read
-      pauseReading(); // until the reciter reaches the next one (onVerse starts again)
-      return renderReading();
+      state.lastRead = ayah;
+      const next = nextToRead();
+      if (next === null) {
+        pauseReading(); // until the reciter reaches the next one (onVerse starts again)
+        return renderReading();
+      }
+      ayah = next;
+      continue;
     }
-    if (state.ayah >= verses.length) return stopReading(); // the end of the surah
-    setAyah(state.ayah + 1, 'follow');
+    if (ayah >= verses.length) return stopReading(); // the end of the surah
+    setAyah(ayah + 1, 'follow');
+    ayah = state.ayah;
   }
+}
+
+/** Following: the ayah to read next, or null to wait for the reciter to get to it. */
+function nextToRead() {
+  const last = state.lastRead;
+  if (last === null || !settings.get('readEveryAyah')) return state.ayah !== last ? state.ayah : null;
+  // Behind the last one read: a repeat (a jump back would have cleared `last`), so wait for them to come past it.
+  if (state.ayah <= last) return null;
+  if (state.ayah - last > MAX_BEHIND) return state.ayah; // too far behind to catch up: join them
+  return last + 1;
+}
+
+/** How many ayahs the reading is behind the reciter (0 when it isn't reading). */
+function readingBehind() {
+  return state.reading && state.following && state.readingAyah !== null ? Math.max(0, state.ayah - state.readingAyah) : 0;
+}
+
+// Reading faster to catch up with the reciter: 10% for each ayah behind, up to 1.5×.
+function catchUp() {
+  return settings.get('readEveryAyah') ? Math.min(1 + CATCH_UP * readingBehind(), MAX_CATCH_UP) : 1;
+}
+
+// Reading every ayah while following: the verse being read, which can be behind
+// the reciter's, is the one kept in view.
+function readingLeads() {
+  return state.following && state.reading && settings.get('readEveryAyah');
 }
 
 /** Drops whatever's being read, but stays in reading mode. Returns the new read session. */
@@ -461,6 +518,7 @@ async function showSurah(number, ayah) {
   const placeholder = { number };
   state.surah = placeholder; // so further matches in this surah don't refetch it
   state.ayah = ayah;
+  state.lastRead = null; // reading starts again where the reciter is
   if (state.scope !== number) state.scope = null; // that was about another surah
   renderScope();
   if (state.reading) pauseReading(); // its verse is going; it starts again once the surah's loaded
@@ -470,15 +528,18 @@ async function showSurah(number, ayah) {
   els.subtitle.textContent = els.details.textContent = '';
   versesView.message('loading verses…');
   try {
-    const surah = await api.fetchSurah(number, settings.get('translation'));
+    const translation = settings.get('translation');
+    const surah = await api.fetchSurah(number, translation);
     if (state.surah !== placeholder) return;
     state.surah = surah;
     els.title.textContent = `Surah ${surah.englishName}`;
     els.subtitle.textContent = `${surah.englishNameTranslation} · ${surah.name}`;
     els.details.textContent = `${surah.revelationType} · ${surah.verses.length} verses`;
+    // Offline the first time a translation is chosen: the verses come without it.
+    if (surah.translationError) els.details.textContent += ' · couldn’t download the translation (offline?)';
     els.duration.textContent = String(surah.verses.length);
     document.title = `${surah.englishName} — ${NAME}`;
-    versesView.showVerses(surah, tajweedKey());
+    versesView.showVerses(surah, tajweedKey(), translation);
     renderTajweed();
     setAyah(state.ayah, true); // the latest match may have arrived while loading
     if (state.reading) readAloud();
@@ -560,7 +621,10 @@ function statusText() {
   if (state.loadingModel) return modelLoadingText();
   if (state.unsure) return 'this passage appears in more than one place · listening a bit more…';
   if (state.following && follower.found) {
-    const place = state.surah?.verses ? ` ${state.surah.englishName} ${state.surah.number}:${state.ayah}` : '';
+    const behind = readingBehind();
+    const place =
+      (state.surah?.verses ? ` ${state.surah.englishName} ${state.surah.number}:${state.ayah}` : '') +
+      (behind ? ` · reading ayah ${state.readingAyah}, ${behind} behind` : '');
     if (micHearsReading() && state.readingAyah !== null) return `following${place} · listening again once it’s read aloud`;
     if (lost()) return `following${place} · can't hear the reciter${state.note ? ` (${state.note})` : ''} · listening…`;
     if (state.busy) return `following${place} · checking…`;
@@ -666,6 +730,11 @@ function applySetting(key) {
     else root.removeProperty(`--${key}`);
     return renderTajweed();
   }
+  if (key.startsWith('voice-')) {
+    renderReading();
+    if (key === `voice-${settings.get('translation')}`) reader.again();
+    return;
+  }
   switch (key) {
     case 'theme':
       return applyTheme();
@@ -698,10 +767,8 @@ function applySetting(key) {
       els.source.value = value;
       return;
     case 'readingSpeed':
-    case 'voiceEn':
-    case 'voiceMs':
       renderReading();
-      if (key === 'readingSpeed' || key === (settings.get('translation') === 'ms' ? 'voiceMs' : 'voiceEn')) reader.again();
+      reader.again();
       return;
   }
 }
@@ -773,6 +840,7 @@ if (!canCaptureTab) {
   els.source.querySelector('[value="tab"]').remove();
   els.source.hidden = true;
 }
+els.translation.replaceChildren(...TRANSLATIONS.map(({ code, name }) => new Option(name, code)), new Option('None', 'none'));
 els.translation.value = settings.get('translation');
 if (!els.translation.value) settings.set('translation', 'en'); // a translation we no longer offer
 for (const key of Object.keys(settings.DEFAULTS)) applySetting(key);
@@ -780,4 +848,13 @@ renderListenButtons();
 reset();
 setStatus('idle');
 warmUpQuran().catch(() => {}); // start loading the model now
+// Which translations can be read aloud depends on the device's voices, which
+// can change while the app's away (a voice installed in Android's settings).
+const voicesChanged = () => {
+  renderReading();
+  renderListenButtons();
+  settingsPanel.refresh();
+};
+refreshVoices().then(voicesChanged);
+document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && refreshVoices().then(voicesChanged));
 if (!tutorial.seen) tutorial.show(); // the first time

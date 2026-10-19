@@ -1,6 +1,10 @@
 // The user's settings: their defaults, the ones they've changed (kept in
 // localStorage), and change notifications. settings-panel.js is the UI for them.
+import { TRANSLATIONS } from './translations.js';
+
 const STORAGE_KEY = 'settings';
+// Settings that have been renamed, by their old names
+const RENAMED = { voiceEn: 'voice-en', voiceMs: 'voice-ms' };
 
 export const DEFAULTS = Object.freeze({
   // what Listen does once it has found the ayah
@@ -12,7 +16,7 @@ export const DEFAULTS = Object.freeze({
   meter: true, // the level meter in the top bar
   animations: true, // pulsing dot, smooth scrolling
   // verses
-  translation: 'en', // en | ms | none
+  translation: 'en', // a code from translations.js, or none
   arabicSize: 100, // %
   translationSize: 100, // %
   tajweed: true, // tajweed colours and the key above each surah
@@ -29,9 +33,12 @@ export const DEFAULTS = Object.freeze({
   followMax: 5, // and at the most (early in a long ayah)
   // reading aloud
   readingSpeed: 1, // 1 is the voice's normal speed
-  voiceEn: 'ibrahim-walk', // the recording (reader.js's RECORDED), a device voice's id, or '' for the device's own
-  voiceMs: '',
+  // The voice for each translation: a device voice's id, or '' for the device's
+  // own. English can also be the recording (reader.js's RECORDED), and is by default.
+  ...Object.fromEntries(TRANSLATIONS.map(({ code }) => [`voice-${code}`, ''])),
+  'voice-en': 'ibrahim-walk',
   listenWhileReading: false, // check while reading aloud (with headphones, the microphone can't hear it)
+  readEveryAyah: true, // following: read each ayah in turn, faster when behind, rather than skip to the reciter's
   // listening
   source: 'mic', // mic | tab
   microphone: '', // a deviceId, or '' for the default
@@ -74,7 +81,9 @@ function load() {
   }
   // Anything from an older version that no longer fits is dropped.
   return Object.fromEntries(
-    Object.entries(saved ?? {}).filter(([key, value]) => key in DEFAULTS && typeof value === typeof DEFAULTS[key]),
+    Object.entries(saved ?? {})
+      .map(([key, value]) => [RENAMED[key] ?? key, value])
+      .filter(([key, value]) => key in DEFAULTS && typeof value === typeof DEFAULTS[key]),
   );
 }
 
