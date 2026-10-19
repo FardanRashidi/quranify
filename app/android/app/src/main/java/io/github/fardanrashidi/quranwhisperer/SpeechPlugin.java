@@ -1,5 +1,7 @@
 package io.github.fardanrashidi.quranwhisperer;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
@@ -100,6 +102,22 @@ public class SpeechPlugin extends Plugin {
             result.put("voices", list);
             call.resolve(result);
         });
+    }
+
+    /** Opens the voice engine's page for downloading voices (Google's lists every language it has), or else Android's text-to-speech settings. */
+    @PluginMethod
+    public void installVoices(PluginCall call) {
+        Intent download = new Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).setPackage(tts.getDefaultEngine());
+        for (Intent intent : new Intent[] { download, new Intent("com.android.settings.TTS_SETTINGS") }) {
+            try {
+                getActivity().startActivity(intent);
+                call.resolve();
+                return;
+            } catch (ActivityNotFoundException e) {
+                // try the next
+            }
+        }
+        call.reject("no text-to-speech settings on this phone");
     }
 
     /** { id, text, voice, lang, rate } → { finished } once it's been said, or stopped */

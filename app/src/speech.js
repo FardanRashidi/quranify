@@ -6,6 +6,11 @@ const Speech = registerPlugin('Speech');
 
 export const supported = true;
 
+/** Opens the voice engine's downloads (Google's lists every language it has), or else Android's text-to-speech settings. */
+export function installVoices() {
+  return Speech.installVoices();
+}
+
 let current = null; // { id, resolve, onWord } for what's being said
 let count = 0;
 Speech.addListener('word', ({ id, start, end }) => {

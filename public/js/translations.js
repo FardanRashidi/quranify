@@ -17,8 +17,7 @@ export const TRANSLATIONS = [
   { code: 'ha', name: 'Hausa', edition: 'ha.gumi', translator: 'Abubakar Mahmoud Gumi' },
   { code: 'it', name: 'Italiano', edition: 'it.piccardo', translator: 'Hamza Roberto Piccardo' },
   { code: 'sw', name: 'Kiswahili', edition: 'sw.barwani', translator: 'Ali Muhsin Al-Barwani' },
-  // Malay voices are rare, and Indonesian is close enough to follow.
-  { code: 'ms', name: 'Melayu', edition: 'ms.basmeih', translator: 'Abdullah Muhammad Basmeih', speech: ['ms-MY', 'ms', 'id-ID', 'id'] },
+  { code: 'ms', name: 'Melayu', edition: 'ms.basmeih', translator: 'Abdullah Muhammad Basmeih', speech: ['ms-MY', 'ms'] },
   { code: 'nl', name: 'Nederlands', edition: 'nl.siregar', translator: 'Sofian S. Siregar' },
   { code: 'no', name: 'Norsk', edition: 'no.berg', translator: 'Einar Berg', speech: ['nb', 'no', 'nn'] },
   { code: 'pl', name: 'Polski', edition: 'pl.bielawskiego', translator: 'Józef Bielawski' },

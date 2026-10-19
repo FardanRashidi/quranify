@@ -52,6 +52,8 @@ const seconds = (value) => `${value} s`;
 const NEXT_LISTEN = 'Takes effect the next time you press Listen';
 const tajweedOn = () => settings.get('tajweed');
 const translatedTo = (language) => settings.get('translation') === language;
+// The translation shown can't be read aloud: there's no voice for it on this device
+const noVoice = () => canReadAloud && !translatedTo('none') && !supportedFor(settings.get('translation'));
 
 /**
  * Each section's rows. `when` hides a row (or leaves out a section) that doesn't
@@ -154,7 +156,13 @@ const SECTIONS = [
       {
         type: 'note',
         text: () => `This device has no voice for ${translation(settings.get('translation'))?.name}, so it can’t be read aloud. You can add one in the device’s text-to-speech settings`,
-        when: () => canReadAloud && !translatedTo('none') && !supportedFor(settings.get('translation')),
+        when: () => !speech.installVoices && noVoice(),
+      },
+      {
+        label: 'Voice',
+        type: 'installVoices',
+        hint: () => `This phone has no ${translation(settings.get('translation'))?.name} voice yet, so it can’t be read aloud. Download one, then come back`,
+        when: () => Boolean(speech.installVoices) && noVoice(),
       },
       {
         key: 'readEveryAyah',
@@ -481,6 +489,13 @@ const CONTROLS = {
   tutorial(spec, id) {
     const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'Start' });
     button.addEventListener('click', () => button.dispatchEvent(new Event('tutorial', { bubbles: true })));
+    return { control: button };
+  },
+
+  // Back in the app, the panel lists the voices again (see the constructor).
+  installVoices(spec, id) {
+    const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'Download' });
+    button.addEventListener('click', () => speech.installVoices().catch((err) => console.warn(err)));
     return { control: button };
   },
 

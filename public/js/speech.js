@@ -6,6 +6,9 @@ const synth = globalThis.speechSynthesis;
 /** Whether anything can be read aloud here. */
 export const supported = Boolean(synth && globalThis.SpeechSynthesisUtterance);
 
+/** Opens somewhere to download more voices: the app can (app/src/speech.js), a browser can't. */
+export const installVoices = null;
+
 let current = null; // { utterance, resolve }: also keeps the utterance from being garbage-collected mid-way (Chrome)
 
 /** @returns {Promise<{ id: string, name: string, lang: string, default: boolean }[]>} */

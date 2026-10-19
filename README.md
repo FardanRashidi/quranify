@@ -303,13 +303,17 @@ The voices:
   recording can't be played (offline, say), the device's voice reads that
   ayah instead. Any of the device's English voices can be chosen instead in
   the settings.
-- **Every other language** uses the device's voice for it. Malay can also use
-  an Indonesian voice, which is close enough to follow. Nobody has recorded
-  the Basmeih translation.
+- **Every other language** uses the device's voice for it. Malay only uses a
+  Malaysian one (`ms-MY`), never an Indonesian one: Android's Google voices
+  have it, Chrome on a computer doesn't. Nobody has recorded the Basmeih
+  translation.
 - Windows, macOS, iOS and Android come with voices. Chrome and Firefox on
   Linux only have them when `speech-dispatcher` is installed.
 - On Android you can add voices under *Settings → System → Languages → Text-to-speech
-  output*.
+  output*. In the app, when there's no voice for the translation shown,
+  *Settings → Reading aloud* has a **Download** button that opens Google's
+  voice downloads (or Android's text-to-speech settings). Back in the app, the
+  new voices are listed.
 
 When the device has no voice for the translation's language, the button is
 hidden, and the settings say so and where to add one. English always has the
@@ -858,7 +862,7 @@ refrains included, in order. Ya-Sin went from 36:4 to 36:23 the same way.
 - **Voice.** The one picked in the settings, else the device's default for the
   language, else the first that fits. Each translation in `translations.js`
   says which voices fit, best first: English takes `en-US`, then any `en`;
-  Malay takes `ms-MY`, `ms`, then `id-ID` and `id`; most just take their
+  Malay takes `ms-MY`, then any `ms`; most just take their
   language's code. With none on the device, the translation can't be read
   aloud (`supportedFor()`), except English with the recording.
 - **Pieces.** Chrome stops some voices (Google's online ones) after about 15
@@ -1434,7 +1438,7 @@ app/              Android app: the same page, with the server's work done on the
     Whisper.java        the speech model, with ONNX Runtime
     SpeechModel.java    downloads and loads the model, one clip at a time (for the page and auto search)
     WhisperPlugin.java  speech to text for the page
-    SpeechPlugin.java   Android text-to-speech: voices, speak, stop, word events
+    SpeechPlugin.java   Android text-to-speech: voices, speak, stop, word events, downloading voices
     ScreenPlugin.java   keeps the screen on
     AutoSearchService.java   auto search: background listening, checks, notifications
     AutoSearchTile.java      its Quick Settings tile
@@ -1486,8 +1490,9 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   which the app doesn't use yet.
 - **Other languages need a voice on the device** to be read aloud. Android
   adds voices under *Settings → System → Languages → Text-to-speech output*.
-  The Android emulator had English voices only, so reading other languages
-  aloud was tried in Chrome (Indonesian), not in the app.
+  The Android emulator had English voices only. Malay was downloaded there
+  with **Download** (5.1 MB), and then read with `ms-my-x-mse-local`; other
+  languages were tried in Chrome (Indonesian).
 - **The recorded voice's rights:** no source found says who owns the
   recording (it's also sold as an Audible audiobook). alquran.cloud, whose CDN
   the app plays it from, says in its
