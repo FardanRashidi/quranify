@@ -1043,6 +1043,52 @@ The first time you press Listen, Android asks for the
 microphone. To debug the page, open `chrome://inspect` on the PC while the
 phone is plugged in.
 
+### Releasing on Google Play
+
+Play takes a signed app bundle (`.aab`), not an APK. You sign it with an
+*upload key* that you make once and keep. Play signs the copies it hands out
+with its own key (Play App Signing), so a lost upload key can be reset through
+Play support. Without it you can't send updates until then.
+
+1. Make the key, outside the repo. `keytool` asks for a password and your name:
+
+   ```sh
+   mkdir -p ~/keys
+   ~/Android/jdk-21/bin/keytool -genkeypair -v -keystore ~/keys/quran-whisperer-upload.jks \
+     -alias upload -keyalg RSA -keysize 2048 -validity 10000
+   ```
+
+2. Create `app/android/keystore.properties`, which git ignores. The key's
+   password is the same as the store's (keytool's default PKCS12 format has
+   only one):
+
+   ```properties
+   storeFile=~/keys/quran-whisperer-upload.jks
+   storePassword=your password
+   keyAlias=upload
+   keyPassword=your password
+   ```
+
+3. Build:
+
+   ```sh
+   npm run app:aab   # → app/android/app/build/outputs/bundle/release/app-release.aab
+   ```
+
+Back up the `.jks` file and its password somewhere other than this PC. Each
+upload needs a higher `versionCode` than the last one in
+[`app/android/app/build.gradle`](app/android/app/build.gradle). `versionName`
+is what the store shows. To try the release build on a phone before uploading,
+run `./gradlew assembleRelease` in `app/android`. It makes
+`app/build/outputs/apk/release/app-release.apk`, signed the same way. It can't
+replace a debug install, because the keys differ, so uninstall that first.
+Release builds can't be inspected from `chrome://inspect` and don't play the
+[test recording](#tested). Without `keystore.properties`, release builds stop
+and tell you to create it. Debug builds don't need it.
+
+Tested with a throwaway key: the bundle and APK came out signed, and the
+release APK installed on the emulator, downloaded the model and loaded it.
+
 ## Auto search
 
 The Android app can also listen in the background, with the screen off, and

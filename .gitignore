@@ -4,3 +4,6 @@ certs/
 .DS_Store
 dist/
 app/www/
+app/android/keystore.properties
+*.jks
+*.keystore

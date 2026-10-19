@@ -10,6 +10,7 @@
     "addon": "sh homeassistant/build.sh",
     "app": "node app/build.mjs && cap sync android",
     "app:apk": "npm run app && cd app/android && ./gradlew assembleDebug",
+    "app:aab": "npm run app && cd app/android && ./gradlew bundleRelease",
     "walk-timings": "node scripts/walk-timings.mjs"
   },
   "engines": {

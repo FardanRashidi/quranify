@@ -1,5 +1,10 @@
 apply plugin: 'com.android.application'
 
+// Release builds are signed with the upload key named in app/android/keystore.properties, which isn't in git
+def keystoreFile = rootProject.file('keystore.properties')
+def keystore = new Properties()
+if (keystoreFile.exists()) keystoreFile.withInputStream { keystore.load(it) }
+
 android {
     namespace = "io.github.fardanrashidi.quranwhisperer"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -24,11 +29,29 @@ android {
         // Compressed, ONNX Runtime adds 29 MB to the APK instead of 72 MB
         jniLibs.useLegacyPackaging = true
     }
+    signingConfigs {
+        release {
+            if (keystoreFile.exists()) {
+                storeFile file(keystore['storeFile'].replaceFirst('^~', System.getProperty('user.home')))
+                storePassword keystore['storePassword']
+                keyAlias keystore['keyAlias']
+                keyPassword keystore['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+}
+
+// Without the key, signing fails with a bare NullPointerException
+tasks.matching { it.name in ['signReleaseBundle', 'packageRelease'] }.configureEach {
+    doFirst {
+        if (!keystoreFile.exists()) throw new GradleException('Release builds are signed with your upload key: create app/android/keystore.properties (see "Releasing on Google Play" in the README)')
     }
 }
 
