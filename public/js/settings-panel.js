@@ -6,6 +6,8 @@ import { arabicParagraph } from './verses-view.js';
 import * as speech from './speech.js';
 import { supported as canReadAloud, supportedFor, voiceFor, voicesFor, RECORDED } from './reader.js';
 import * as recording from './recording.js';
+import * as saved from './saved-voice.js';
+import { SavedVoicePanel, megabytes, savedSurahs } from './saved-voice-panel.js';
 import { autoSearch, fetchSurah } from './api.js';
 import { TRANSLATIONS, translation } from './translations.js';
 
@@ -33,6 +35,7 @@ const SAMPLE = {
 const sample = async (language) => SAMPLE[language] ?? (await fetchSurah(1, language).catch(() => null))?.verses[0].translation;
 
 const GITHUB = 'https://github.com/FardanRashidi';
+const NAME = 'Quran Whisperer';
 
 // Where the text, the translation shown, the voice and the model come from, as
 // their terms ask (Tanzil's: name it and link to tanzil.net). Links are [text, href].
@@ -49,15 +52,25 @@ function credits() {
 
 const percent = (value) => `${value}%`;
 const seconds = (value) => `${value} s`;
+// 45 s, 1 min, 1 min 30 s
+const duration = (value) => (value < 60 ? `${value} s` : `${Math.floor(value / 60)} min${value % 60 ? ` ${value % 60} s` : ''}`);
+// Give up after: closer together where a few seconds matter, up to 10 minutes (a whole prayer, pauses and all)
+const GIVE_UP = [20, 30, 45, 60, 90, 120, 180, 240, 300, 420, 600];
 const NEXT_LISTEN = 'Takes effect the next time you press Listen';
 const tajweedOn = () => settings.get('tajweed');
 const translatedTo = (language) => settings.get('translation') === language;
+// The translation shown can be read aloud: there's one, and a voice for it
+const readable = () => canReadAloud && !translatedTo('none') && supportedFor(settings.get('translation'));
 // The translation shown can't be read aloud: there's no voice for it on this device
 const noVoice = () => canReadAloud && !translatedTo('none') && !supportedFor(settings.get('translation'));
+// Ibrahim Walk's recording is the voice
+const recordedVoice = () => translatedTo('en') && recording.supported && settings.get('voice-en') === RECORDED;
 
 /**
  * Each section's rows. `when` hides a row (or leaves out a section) that doesn't
- * apply here, and `enabledWhen` greys out one that does nothing with the current settings.
+ * apply here, and `enabledWhen` greys out one that does nothing with the current
+ * settings. `about` is a line under the section's title, and a `collapsed` section
+ * stays folded away until it's opened.
  */
 const SECTIONS = [
   {
@@ -65,6 +78,13 @@ const SECTIONS = [
     rows: [
       { key: 'textSize', label: 'Text size', type: 'choice', options: settings.TEXT_SIZES, hint: 'For everything: the verses, buttons and menus' },
       { type: 'preview' },
+      { key: 'arabicSize', label: 'Arabic size', type: 'range', min: 70, max: 200, step: 5, format: percent },
+    ],
+  },
+  {
+    title: 'Translation and voice',
+    about: 'The translation under each ayah, and reading it aloud',
+    rows: [
       {
         key: 'translation',
         label: 'Translation',
@@ -72,12 +92,84 @@ const SECTIONS = [
         options: [...TRANSLATIONS.map(({ code, name }) => [code, name]), ['none', 'None']],
         hint: 'Downloaded the first time you choose it',
       },
-      { key: 'arabicSize', label: 'Arabic size', type: 'range', min: 70, max: 200, step: 5, format: percent },
-      { key: 'translationSize', label: 'Translation size', type: 'range', min: 70, max: 200, step: 5, format: percent },
+      {
+        key: 'translationSize',
+        label: 'Translation size',
+        type: 'range',
+        min: 70,
+        max: 200,
+        step: 5,
+        format: percent,
+        enabledWhen: () => !translatedTo('none'),
+      },
+      // For the translation shown
+      {
+        label: 'Voice',
+        type: 'voice',
+        when: readable,
+        hint: () =>
+          recordedVoice()
+            ? `A recording of this translation (Saheeh International)${saved.supported ? '' : ', played from the internet'}`
+            : '',
+      },
+      {
+        label: 'Save the voice for offline',
+        type: 'savedVoice',
+        hint: savedVoiceHint,
+        when: () => saved.supported && recordedVoice(),
+      },
+      {
+        type: 'note',
+        text: () => `This device has no voice for ${translation(settings.get('translation'))?.name}, so it can’t be read aloud. You can add one in the device’s text-to-speech settings`,
+        when: () => !speech.installVoices && noVoice(),
+      },
+      {
+        label: 'Voice',
+        type: 'installVoices',
+        hint: () => `This phone has no ${translation(settings.get('translation'))?.name} voice yet, so it can’t be read aloud. Download one, then come back`,
+        when: () => Boolean(speech.installVoices) && noVoice(),
+      },
+      {
+        key: 'readingSpeed',
+        label: 'Reading speed',
+        type: 'range',
+        min: 0.5,
+        max: 2,
+        step: 0.05,
+        format: (value) => `${value}×`,
+        when: () => canReadAloud,
+        enabledWhen: readable,
+      },
+      {
+        key: 'listenRead',
+        label: 'Read aloud when Listen finds the ayah',
+        type: 'toggle',
+        hint: 'Along with the reciter when following, otherwise on through the surah',
+        when: () => canReadAloud,
+        enabledWhen: readable,
+      },
+      {
+        key: 'readEveryAyah',
+        label: 'Read every ayah',
+        type: 'toggle',
+        hint: 'While following: each ayah in turn, faster (up to 1.5×) when the reciter gets ahead. Off: it skips to the ayah the reciter is on',
+        when: () => canReadAloud,
+        enabledWhen: readable,
+      },
+      {
+        key: 'listenWhileReading',
+        label: 'Keep listening while reading',
+        type: 'toggle',
+        hint: 'For headphones. Otherwise checks wait while it reads, so the microphone doesn’t hear the voice',
+        when: () => canReadAloud,
+        enabledWhen: readable,
+      },
+      { type: 'note', text: 'This browser can’t read aloud', when: () => !canReadAloud },
     ],
   },
   {
-    title: 'Listen button',
+    title: 'Listening',
+    about: 'What Listen does once it’s found the ayah, and how long it keeps trying',
     rows: [
       {
         key: 'listenFollow',
@@ -85,14 +177,24 @@ const SECTIONS = [
         type: 'toggle',
         hint: 'Once it finds the ayah, keep listening and move along with them. Off: stop listening once it’s found',
       },
+      { key: 'followScroll', label: 'Scroll along', type: 'toggle', hint: 'To each ayah as following or reading aloud reaches it' },
       {
-        key: 'listenRead',
-        label: 'Read the translation aloud',
-        type: 'toggle',
-        hint: 'From the ayah it finds: along with the reciter when following, otherwise on through the surah',
-        when: () => canReadAloud,
-        enabledWhen: () => settings.get('translation') !== 'none',
+        key: 'giveUpAfter',
+        label: 'Give up after',
+        type: 'range',
+        values: GIVE_UP,
+        format: duration,
+        hint: 'Of not hearing the ayah. Longer suits following a whole prayer, with its pauses',
       },
+      {
+        key: 'source',
+        label: 'Audio source',
+        type: 'choice',
+        options: [['mic', 'Microphone'], ['tab', 'Tab / system']],
+        hint: NEXT_LISTEN,
+        when: () => Boolean(navigator.mediaDevices?.getDisplayMedia),
+      },
+      { key: 'microphone', label: 'Microphone', type: 'microphone', hint: NEXT_LISTEN },
     ],
   },
   {
@@ -117,9 +219,19 @@ const SECTIONS = [
     ],
   },
   {
-    title: 'Following',
+    title: 'Auto search',
+    when: () => autoSearch.supported,
     rows: [
-      { key: 'followScroll', label: 'Scroll along', type: 'toggle', hint: 'To each ayah as following or reading aloud reaches it' },
+      { type: 'autoSearch', label: 'Listen in the background', hint: 'With the screen off too, and send a notification for each surah it hears' },
+      { type: 'tile', label: 'Quick Settings tile', hint: 'Turns it on and off from the top of the screen. You can also add it by editing Quick Settings' },
+      { type: 'history', label: 'History', hint: 'Each surah it’s heard, under Surahs → Heard' },
+    ],
+  },
+  {
+    title: 'Advanced',
+    about: 'How often it checks while following, and how much it hears each time. The defaults suit most recitations',
+    collapsed: true,
+    rows: [
       {
         key: 'followMin',
         label: 'Shortest wait between checks',
@@ -128,82 +240,10 @@ const SECTIONS = [
         max: 5,
         step: 0.5,
         format: seconds,
-        hint: 'Through short ayahs, and near the end of a long one',
+        hint: 'Through short ayahs, and near the end of a long one. A pause from the reciter there gets a check straight away',
       },
       { key: 'followMax', label: 'Longest wait between checks', type: 'range', min: 2, max: 15, step: 1, format: seconds, hint: 'Early in a long ayah' },
-    ],
-  },
-  {
-    title: 'Reading aloud',
-    rows: [
-      {
-        key: 'readingSpeed',
-        label: 'Speed',
-        type: 'range',
-        min: 0.5,
-        max: 2,
-        step: 0.05,
-        format: (value) => `${value}×`,
-        when: () => canReadAloud,
-      },
-      // For the translation shown
-      {
-        label: 'Voice',
-        type: 'voice',
-        when: () => !translatedTo('none') && supportedFor(settings.get('translation')),
-        hint: () => (translatedTo('en') ? 'Ibrahim Walk is a recording of the translation shown (Saheeh International), played from the internet' : ''),
-      },
-      {
-        type: 'note',
-        text: () => `This device has no voice for ${translation(settings.get('translation'))?.name}, so it can’t be read aloud. You can add one in the device’s text-to-speech settings`,
-        when: () => !speech.installVoices && noVoice(),
-      },
-      {
-        label: 'Voice',
-        type: 'installVoices',
-        hint: () => `This phone has no ${translation(settings.get('translation'))?.name} voice yet, so it can’t be read aloud. Download one, then come back`,
-        when: () => Boolean(speech.installVoices) && noVoice(),
-      },
-      {
-        key: 'readEveryAyah',
-        label: 'Read every ayah',
-        type: 'toggle',
-        hint: 'While following: each ayah in turn, faster (up to 1.5×) when the reciter gets ahead. Off: it skips to the ayah the reciter is on',
-        when: () => canReadAloud,
-      },
-      {
-        key: 'listenWhileReading',
-        label: 'Keep listening while reading',
-        type: 'toggle',
-        hint: 'For headphones. Otherwise checks wait while it reads, so the microphone doesn’t hear the voice',
-        when: () => canReadAloud,
-      },
-      { type: 'note', text: 'This browser can’t read aloud', when: () => !canReadAloud },
-    ],
-  },
-  {
-    title: 'Listening',
-    rows: [
-      {
-        key: 'source',
-        label: 'Audio source',
-        type: 'choice',
-        options: [['mic', 'Microphone'], ['tab', 'Tab / system']],
-        hint: NEXT_LISTEN,
-        when: () => Boolean(navigator.mediaDevices?.getDisplayMedia),
-      },
-      { key: 'microphone', label: 'Microphone', type: 'microphone', hint: NEXT_LISTEN },
-      { key: 'clipSeconds', label: 'Audio sent per try', type: 'range', min: 5, max: 12, step: 1, format: seconds, hint: 'More is surer, less is quicker' },
-      { key: 'giveUpAfter', label: 'Give up after', type: 'range', min: 20, max: 300, step: 10, format: seconds, hint: 'Of listening without finding the ayah' },
-    ],
-  },
-  {
-    title: 'Auto search',
-    when: () => autoSearch.supported,
-    rows: [
-      { type: 'autoSearch', label: 'Listen in the background', hint: 'With the screen off too, and send a notification for each surah it hears' },
-      { type: 'tile', label: 'Quick Settings tile', hint: 'Turns it on and off from the top of the screen. You can also add it by editing Quick Settings' },
-      { type: 'history', label: 'History', hint: 'Each surah it’s heard, under Surahs → Heard' },
+      { key: 'clipSeconds', label: 'Audio per check', type: 'range', min: 5, max: 12, step: 1, format: seconds, hint: 'More is surer, less is quicker' },
     ],
   },
   {
@@ -216,6 +256,14 @@ const SECTIONS = [
   },
 ];
 
+// What's saved for offline, under its row: until it's been asked, what the row is for.
+function savedVoiceHint() {
+  if (!saved.loaded()) return 'Keep it on this phone, to hear it without the internet';
+  const { surahs, bytes, saving } = saved.summary();
+  const what = bytes ? `${savedSurahs(surahs)} saved (${megabytes(bytes)})` : 'Nothing saved yet, so it plays from the internet';
+  return saving ? `${what} · saving ${saving} more…` : what;
+}
+
 let uid = 0;
 
 export class SettingsPanel {
@@ -226,15 +274,23 @@ export class SettingsPanel {
 
   #dialog;
   #rows = []; // { row, update() }
+  #refreshing = false; // a refresh waiting for the next frame
 
   /** @param {HTMLDialogElement} dialog */
   constructor(dialog) {
     this.#dialog = dialog;
     const body = dialog.querySelector('.settings-body');
-    for (const { title, rows, when } of SECTIONS) {
+    for (const { title, about, rows, when, collapsed } of SECTIONS) {
       if (when && !when()) continue;
-      const section = document.createElement('section');
-      section.append(Object.assign(document.createElement('h3'), { textContent: title }));
+      const heading = Object.assign(document.createElement('h3'), { textContent: title });
+      // Folded away: a <details>, with the heading as what opens it
+      const section = document.createElement(collapsed ? 'details' : 'section');
+      if (collapsed) {
+        const summary = document.createElement('summary');
+        summary.append(heading);
+        section.append(summary);
+      } else section.append(heading);
+      if (about) section.append(Object.assign(document.createElement('p'), { className: 'about', textContent: about }));
       for (const spec of rows) {
         const built = build(spec);
         this.#rows.push({ ...built, spec });
@@ -244,7 +300,20 @@ export class SettingsPanel {
     }
     // A second close at the bottom, so there's no scrolling back up to the ×
     const done = Object.assign(document.createElement('button'), { type: 'button', className: 'close-bottom primary', textContent: 'Close' });
-    body.append(resetButton(), done);
+    body.append(resetButton(), done, versionLine());
+
+    // The offline voice opens over this panel, and closes back to it.
+    const savedVoicePanel = saved.supported ? new SavedVoicePanel(document.getElementById('saved-voice')) : null;
+    dialog.addEventListener('saved-voice', () => savedVoicePanel?.show());
+    // Saving reports each ayah: keep the row's summary up to date, once a frame at most.
+    saved.onChange(() => {
+      if (!this.open || this.#refreshing) return;
+      this.#refreshing = true;
+      requestAnimationFrame(() => {
+        this.#refreshing = false;
+        this.refresh();
+      });
+    });
 
     for (const close of dialog.querySelectorAll('.close, .close-bottom')) close.addEventListener('click', () => dialog.close());
     dialog.addEventListener('tutorial', () => {
@@ -264,8 +333,9 @@ export class SettingsPanel {
     dialog.addEventListener('close', () => {
       if (history.state?.settings) history.back();
     });
+    // (Back from the offline voice, over this, leaves this open.)
     addEventListener('popstate', () => {
-      if (dialog.open) dialog.close();
+      if (dialog.open && !history.state?.settings) dialog.close();
     });
     settings.onChange((key) => {
       if (key === 'translation' && this.open) this.#listVoices();
@@ -286,6 +356,7 @@ export class SettingsPanel {
     this.#dialog.showModal();
     listMicrophones(this.#rows.find((r) => r.spec.type === 'microphone'));
     this.#listVoices();
+    if (saved.supported) saved.load().then(() => this.refresh(), (err) => console.warn(err));
   }
 
   #listVoices() {
@@ -371,18 +442,22 @@ const CONTROLS = {
     return { control: select, update: () => (select.value = settings.get(key)) };
   },
 
-  range({ key, min, max, step, format }, id) {
+  // From min to max in steps, or (with `values`) through a list of values, evenly spaced along it.
+  range({ key, min, max, step, format, values }, id) {
     const control = document.createElement('div');
     control.className = 'range';
-    const input = Object.assign(document.createElement('input'), { type: 'range', id, min, max, step });
+    const input = Object.assign(document.createElement('input'), values ? { type: 'range', id, min: 0, max: values.length - 1, step: 1 } : { type: 'range', id, min, max, step });
     const output = Object.assign(document.createElement('output'), { htmlFor: id });
-    input.addEventListener('input', () => settings.set(key, Number(input.value)));
+    input.addEventListener('input', () => settings.set(key, values ? values[Number(input.value)] : Number(input.value)));
     control.append(input, output);
     return {
       control,
       update: () => {
-        input.value = settings.get(key);
-        output.value = format(settings.get(key));
+        const value = settings.get(key);
+        // A value that isn't in the list (from before it had one) sits at the nearest
+        input.value = values ? values.reduce((best, v, i) => (Math.abs(v - value) < Math.abs(values[best] - value) ? i : best), 0) : value;
+        input.setAttribute('aria-valuetext', format(value));
+        output.value = format(value);
       },
     };
   },
@@ -499,6 +574,13 @@ const CONTROLS = {
     return { control: button };
   },
 
+  // Opens the offline voice over the panel (see the constructor).
+  savedVoice(spec, id) {
+    const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'Choose surahs' });
+    button.addEventListener('click', () => button.dispatchEvent(new Event('saved-voice', { bubbles: true })));
+    return { control: button };
+  },
+
   // Hands over to the surah list's Heard tab (see the constructor).
   history(spec, id) {
     const button = Object.assign(document.createElement('button'), { type: 'button', id, textContent: 'Show' });
@@ -559,6 +641,22 @@ async function listVoices(entry) {
   if (language === 'en' && recording.supported) options.unshift(new Option('Ibrahim Walk (recorded)', RECORDED));
   select.replaceChildren(...options);
   entry.update();
+}
+
+// Which version this is, at the very bottom, to tell builds apart: version.json
+// comes from package.json (the server makes it, and app/build.mjs for the app).
+function versionLine() {
+  const line = Object.assign(document.createElement('p'), { className: 'version' });
+  fetch('version.json')
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`version.json: HTTP ${res.status}`))))
+    .then(
+      ({ version, commit }) => (line.textContent = `${NAME} · version ${version}${commit ? ` (${commit})` : ''}`),
+      (err) => {
+        console.warn(err);
+        line.textContent = NAME;
+      },
+    );
+  return line;
 }
 
 // Asks twice, since there's no undo.

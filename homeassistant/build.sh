@@ -9,4 +9,7 @@ rm -rf "$out"
 mkdir -p "$out"
 cp -r "$root/homeassistant/quran_finder/." "$out/"
 cp -r "$root/package.json" "$root/package-lock.json" "$root/server" "$root/lib" "$root/public" "$out/"
+# The add-on's version is package.json's, so Home Assistant offers each new one as an update
+version=$(node -p "require('$root/package.json').version")
+sed -i.bak "s/^version: .*/version: \"$version\"/" "$out/config.yaml" && rm "$out/config.yaml.bak"
 echo "Built $out"

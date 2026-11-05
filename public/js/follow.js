@@ -16,6 +16,9 @@ const LAST_WORD = 1;
 // words. (A copy behind them is taken for one further on, so it's not believed either.)
 const REACH = 2;
 const REACH_WORDS = 6;
+// A pause means the end of the ayah if, at this many times their pace, the reciter
+// would have got to its last word by now. Other pauses (a breath partway) are left to the next check.
+const NEAR_END = 2;
 
 export class Follower {
   /** The reciter's pace, in words per second (pauses included). */
@@ -65,6 +68,18 @@ export class Follower {
     const finished = match.word === match.ayahEnd;
     this.at = { surah: match.surah, ayah: finished ? match.ayah + 1 : match.ayah };
     return { ...this.at, unsure: false };
+  }
+
+  /**
+   * Whether the reciter could have reached the end of the ayah on screen by now,
+   * even if they're faster than they've been so far.
+   * @param {number} now performance.now()
+   * @param {{ firstWord: number, words: number } | undefined} verse the ayah on screen, once its surah has loaded
+   */
+  nearEnd(now, verse) {
+    if (!this.#heard || !verse) return true;
+    const wordsLeft = verse.firstWord + verse.words - 1 - this.#heard.word;
+    return wordsLeft <= LAST_WORD + NEAR_END * this.pace * Math.max(0, (now - this.#heard.at) / 1000);
   }
 
   #withinReach(match, at) {

@@ -113,6 +113,7 @@ const state = {
   searchFrom: null, // word index the reader was at when they asked to sync
   listenStartedAt: 0,
   heardAt: 0, // following: when a check last placed the reciter
+  clipEndedAt: -Infinity, // when the audio for the latest check ended
   unsure: false, // the last match is a passage that's in more than one place
   quranReady: null, // promise: the server's speech model is loaded
   loadingModel: false,
@@ -150,6 +151,7 @@ async function start(follow = settings.get('listenFollow')) {
     return;
   }
   listener.onEnded = stop;
+  listener.onPause = onPause;
   state.session++;
   state.following = follow;
   state.lastRead = null;
@@ -231,6 +233,7 @@ async function attempt() {
   try {
     const clip = await listener.clip(seconds);
     if (session !== state.session) return;
+    state.clipEndedAt = clip.endedAt;
     if (clip.audible < (state.scope ? MIN_AUDIBLE_IN_SURAH : MIN_AUDIBLE)) return miss('Too quiet');
     await warmUpQuran();
     if (session !== state.session) return;
@@ -296,6 +299,20 @@ function onVerse(match, endedAt) {
   schedule(nextDelay());
 }
 
+/**
+ * Following, the reciter has paused near where the ayah should end: most likely,
+ * they've just finished it. So it checks straight away, rather than when the next
+ * check is due, and moves on to the next ayah in the pause, before they start it.
+ * @param {number} stoppedAt when the sound stopped
+ */
+function onPause(stoppedAt) {
+  if (!state.following || !follower.found || state.unsure) return;
+  if (micHearsReading() && state.readingAyah !== null) return; // the voice reading aloud, between pieces
+  if (state.clipEndedAt >= stoppedAt) return; // a check has already heard the pause
+  if (!follower.nearEnd(performance.now(), followedVerse())) return; // a breath partway through
+  syncNow(); // or straight after the check that's under way
+}
+
 function miss(reason) {
   state.note = reason;
   // Give up after a while without finding the reciter (or, following, without hearing them).
@@ -308,9 +325,13 @@ function miss(reason) {
 
 function nextDelay() {
   if (!state.following || !follower.found) return SEARCH_EVERY;
+  return follower.delay(performance.now(), followedVerse(), { min: settings.get('followMin'), max: settings.get('followMax') });
+}
+
+// The ayah the follower has the reciter on, once its surah has loaded
+function followedVerse() {
   const { surah, ayah } = follower.at;
-  const verse = state.surah?.number === surah ? state.surah.verses?.[ayah - 1] : undefined;
-  return follower.delay(performance.now(), verse, { min: settings.get('followMin'), max: settings.get('followMax') });
+  return state.surah?.number === surah ? state.surah.verses?.[ayah - 1] : undefined;
 }
 
 /** Following, but nothing has placed the reciter for a while. */

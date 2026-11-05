@@ -8,15 +8,19 @@ It has one main button. Press **Listen**, play a recitation, and by default it:
 - **finds the ayah** the reciter is on and highlights it;
 - **follows the reciter**, moving the highlight from ayah to ayah as they go.
   It checks more often as the reciter nears the end of an ayah: every 2
-  seconds then, and up to 5 seconds apart early in a long one;
+  seconds then, and up to 5 seconds apart early in a long one. When they
+  pause for breath at the end of one, it checks straight away, so the
+  highlight is usually on the next ayah before they start it;
 - **reads the translation aloud**, a word highlighted at a time, each ayah as
   the reciter reaches it. English is a real person reading it: Ibrahim Walk's
-  recording of Saheeh International, the translation shown. Other languages
-  use the device's own voice.
+  recording of Saheeh International, the translation shown, which the
+  Android app can keep on the phone for offline. Other languages use the
+  device's own voice.
 
-Following and reading aloud can each be turned off in the settings, under
-**listen button**. Then Listen just finds your place and stops listening, or
-finds it and reads on through the surah by itself.
+Following and reading aloud can each be turned off in the settings (**follow
+the reciter** under **listening**, **read aloud when Listen finds the ayah**
+under **translation and voice**). Then Listen just finds your place and stops
+listening, or finds it and reads on through the surah by itself.
 
 You can also [choose a surah](#choosing-a-surah) from a list, to read it, have
 its translation read aloud, or have Listen look for the reciter in that surah
@@ -56,6 +60,7 @@ music side, and runs on port 3001 so the two can run side by side.
 - [Android app](#android-app)
 - [Auto search](#auto-search)
 - [Performance](#performance)
+- [Versions](#versions)
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
 - [Credits and licences](#credits-and-licences)
@@ -165,8 +170,9 @@ remembers that the tour has been shown in `localStorage`, under
    as they reach it.
 3. Press **Stop** (or Space) to stop listening and reading.
 
-What it does once it has found the ayah is up to the **Listen button** section
-of the settings:
+What it does once it has found the ayah is up to two settings, **follow the
+reciter** (under **listening**) and **read aloud when Listen finds the ayah**
+(under **translation and voice**):
 
 | follow the reciter | read the translation aloud | Listen…                                                               |
 | ------------------ | -------------------------- | --------------------------------------------------------------------- |
@@ -226,7 +232,8 @@ twice) empties it. *Settings → Auto search → History* opens it too.
 Some phrases appear word for word in more than one place in the Quran. If what
 it heard could be either, it shows its best guess dimmed and keeps listening
 until the reciter says something that settles it. It gives up after 60 seconds
-without a match.
+without a match, or however long **give up after** is set to (20 seconds to 10
+minutes).
 
 ### Following along
 
@@ -240,10 +247,16 @@ without a match.
    5-second waits even in short ones. The status line says where it is:
    *Following: Yaseen, ayah 12*.
 3. When it hears the reciter finish an ayah, it moves on to the next one
-   straight away, without waiting to hear it begin.
+   straight away, without waiting to hear it begin. Reciters stop for breath
+   at the end of an ayah, so when they pause about where the ayah should end,
+   it checks then and there rather than waiting for the next check: the
+   highlight usually moves on in the pause, before they start the next ayah.
 4. If it can't place the reciter for 12 seconds (a long pause, noise, or a
    passage it can't tell apart from another), the verses dim and it keeps
-   listening. After 60 seconds without placing them, it stops.
+   listening. After 60 seconds without placing them, it stops. **Give up
+   after**, under **listening**, sets how long, from 20 seconds to 10 minutes:
+   long enough to follow a whole prayer, with the pauses between its
+   recitations.
 5. Press **Stop** or Space to stop. The `F` key starts following whatever the
    setting says, and stops it when pressed again. Pressed while Listen is
    still searching with following off, it carries on following once it finds
@@ -298,11 +311,13 @@ The voices:
 - **English** is, by default, **Ibrahim Walk (recorded)**: Ibrahim Walk reading
   the Saheeh International translation, the same text the app shows, one
   recording per ayah. It's played from alquran.cloud's CDN, so it needs the
-  internet. The word highlight follows his voice, from word timings made
-  ahead of time (see [The recorded voice](#the-recorded-voice)). If a
-  recording can't be played (offline, say), the device's voice reads that
-  ayah instead. Any of the device's English voices can be chosen instead in
-  the settings.
+  internet, except in the Android app for the surahs you've saved on the
+  phone (**save the voice for offline** in the settings, see
+  [Saving it for offline](#saving-it-for-offline)). The word highlight
+  follows his voice, from word timings made ahead of time (see
+  [The recorded voice](#the-recorded-voice)). If a recording can't be played
+  (offline, say, and not saved), the device's voice reads that ayah instead.
+  Any of the device's English voices can be chosen instead in the settings.
 - **Every other language** uses the device's voice for it. Malay only uses a
   Malaysian one (`ms-MY`), never an Indonesian one: Android's Google voices
   have it, Chrome on a computer doesn't. Nobody has recorded the Basmeih
@@ -438,17 +453,21 @@ change. Changes take effect straight away and are saved in the browser, or in
 the app. Close it with × at the top or **Close** at the bottom, Esc, Back, or
 a tap outside it.
 
-| Section       | Settings |
-| ------------- | -------- |
-| text          | text size (Normal, Large or Largest, for everything); translation (any of 46 languages, or none); Arabic and translation size on top of that. A sample ayah (51:21) shows the result as you go. |
-| listen button | what Listen does once it has found the ayah: follow the reciter (on), read the translation aloud (on) |
-| appearance    | theme (dark, light, or auto to follow the device), accent colour, level meter (on the Listen button), animations |
-| tajweed       | tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour |
-| following     | scroll along to each ayah (on); the shortest wait between checks (2 s, from 1 to 5) and the longest (5 s, from 2 to 15) |
-| reading aloud | speed (1×, from 0.5× to 2×); the voice for the translation shown (English: **Ibrahim Walk (recorded)**, or any of the device's English voices; other languages: the device's voices for them), with a **Try** button to hear it, kept for each language; or a note when the device has none; read every ayah while following (on); keep listening while reading (off) |
-| listening     | audio source; which microphone (when there's more than one); how much audio each check sends (8 s); how long it listens without placing the reciter before giving up (60 s) |
-| auto search   | Android app only: listening in the background, on or off; **Add** the Quick Settings tile (Android 13 and later); **Show** the history. See [Auto search](#auto-search). |
-| about         | the [tutorial](#the-tutorial); a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, the translation shown, the recorded voice and the speech model |
+| Section               | Settings |
+| --------------------- | -------- |
+| text                  | text size (Normal, Large or Largest, for everything); Arabic size on top of that. A sample ayah (51:21) shows the result as you go. |
+| translation and voice | everything about the translation and hearing it: the translation (any of 46 languages, or none) and its size; the voice for it (English: **Ibrahim Walk (recorded)**, or any of the device's English voices; other languages: the device's voices for them), with a **Try** button to hear it, kept for each language, or a note when the device has none; in the app, **save the voice for offline** (see [Saving it for offline](#saving-it-for-offline)); reading speed (1×, from 0.5× to 2×); read aloud when Listen finds the ayah (on); read every ayah while following (on); keep listening while reading (off). The reading rows grey out with no translation or no voice. |
+| listening             | follow the reciter once it's found (on); scroll along to each ayah (on); how long it listens without placing the reciter before giving up (1 min, from 20 s to 10 min); audio source; which microphone (when there's more than one) |
+| appearance            | theme (dark, light, or auto to follow the device), accent colour, level meter (on the Listen button), animations |
+| tajweed               | tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour |
+| auto search           | Android app only: listening in the background, on or off; **Add** the Quick Settings tile (Android 13 and later); **Show** the history. See [Auto search](#auto-search). |
+| advanced              | folded away until it's opened: the shortest wait between checks while following (2 s, from 1 to 5) and the longest (5 s, from 2 to 15); how much audio each check hears (8 s) |
+| about                 | the [tutorial](#the-tutorial); a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, the translation shown, the recorded voice and the speech model |
+
+The very bottom says which version it is, and which git commit it was built
+from when there is one: *Quran Whisperer · version 1.1.0 (4db06dc)*. It comes
+from `version.json`, which the server makes from `package.json` (and the git
+commit), and `app/build.mjs` writes into the app. See [Versions](#versions).
 
 The tutorial's text size buttons and the speed button change the same
 settings, and the panel keeps up with them. Microphones only have names once
@@ -537,8 +556,8 @@ All in [`public/js/listener.js`](public/js/listener.js) and
   - **ambiguous:** show the best guess dimmed and keep listening;
   - **a clear match:** show it, start reading it aloud if that's on, and carry
     on following (or, with following off, turn the microphone off).
-- After 60 s without a clear match it stops. If it had an ambiguous guess, it
-  keeps that guess.
+- After 60 s without a clear match (**give up after**: 20 s to 10 min) it
+  stops. If it had an ambiguous guess, it keeps that guess.
 - **Listen again** (or `S`) keeps the surah on screen and sends the first word of
   the highlighted ayah as `near`, so passages continuing from your place win
   ties.
@@ -755,6 +774,19 @@ how soon the reciter should finish the ayah on screen:
   normal pace a short ayah gets a check every 2 seconds, while early in a long
   ayah the checks are 5 seconds apart and get closer as the reciter nears its
   end.
+- **At a pause.** Reciters stop for breath at the end of an ayah. The
+  listener notices each pause as it happens: 0.35 s with nothing louder than
+  a third of the loudest of the last few seconds (−10 dB), so a room's
+  background noise or a dying echo still counts as quiet. If the reciter
+  could have got to the ayah's last word by then (at twice their pace, to
+  allow for one who's speeding up), it checks straight away rather than
+  waiting for the check that's due, or right after the one under way. That
+  check hears the ayah's last word, so the highlight moves on in the pause,
+  before the next ayah starts. A pause partway through an ayah (a breath at
+  a stop sign) is left to the next check. Over Al-Mulk 1–10 by Alafasy and by
+  Husary, the pause was caught at 17 of the 18 ayah ends, with background
+  noise up to 25 dB below the recitation. Louder noise hides the pauses, and
+  then it just checks on the timer as before.
 - **Searching** checks every second: before the reciter is found, and while
   what it heard could be more than one place.
 
@@ -776,7 +808,7 @@ how soon the reciter should finish the ayah on screen:
   skipping twenty ayahs. Without this, a misheard word once took Ar-Rahman
   from 55:13 to the refrain at 55:34.
 - **No match.** Nothing moves. After 12 seconds without placing the reciter,
-  the verses dim. After 60 seconds, it stops.
+  the verses dim. After 60 seconds (**give up after**), it stops.
 
 Each check sends the last word heard as `near`, so `locate()` prefers the
 passage that carries on from it.
@@ -912,8 +944,9 @@ English is read by default from
 which is alquran.cloud's audio edition `en.walk`. It's the same text the app
 shows (`en.sahih`), one MP3 per ayah, numbered from 1 (1:1) to 6236 (114:6):
 `https://cdn.islamic.network/quran/audio/192/en.walk/{n}.mp3`. The whole
-reading is 16.6 hours, about 480 MB, so it's streamed an ayah at a time rather
-than kept.
+reading is 16.6 hours, about 520 MB, so it's streamed an ayah at a time, and
+in the Android app, the surahs you choose can be [saved on the
+phone](#saving-it-for-offline).
 
 **When each word is said** comes from
 [`public/data/walk-timings.json`](public/data/walk-timings.json) (820 KB, 260 KB
@@ -977,6 +1010,49 @@ lists how well each ayah lined up.
 
 The voice setting's value for it is `ibrahim-walk` (`RECORDED` in
 `reader.js`), and it's the default for English.
+
+### Saving it for offline
+
+In the Android app, with Ibrahim Walk as the voice, **save the voice for
+offline** (under **translation and voice**) opens **Offline voice** over the
+settings. It lists every surah with its size and a **Save**, **Stop** or
+**Delete** button, and has buttons for Juz ʿAmma (surahs 78–114, about 18 MB)
+and the whole Quran (about 520 MB). Al-Fatiha is 0.3 MB, most short surahs are
+under 1 MB, and Al-Baqarah is 40 MB. The settings row says what's saved: *2
+surahs saved (0.4 MB)*. Back, or ×, goes back to the settings.
+
+- **Sizes** are estimated from the word timings: 8.1 KB per second of sound,
+  plus 3.5 KB a file. That was fitted to 60 of the files, each within 13%, and
+  Al-Fatiha's 7 came out at 0.32 MB estimated and 0.32 MB on the phone.
+- **Saving:** [`SavedVoicePlugin.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/SavedVoicePlugin.java)
+  downloads each ayah's file into the app's no-backup storage
+  (`no_backup/en.walk/{n}.mp3`), like the speech model. It fetches three files
+  at a time, one surah after another in the order asked for, and tries each
+  file three times. A file is written as `.part` and only renamed once its
+  length checks out, so a cut-off download never counts. It carries on with
+  the panel closed, but not once Android stops the app.
+- **Stopping** keeps what's been saved, so the surah shows as *partly saved
+  (77 of 286 ayahs)*, and **Save** fetches only what's missing. A file that
+  arrives after its save was stopped is dropped, so **Delete** straight after
+  **Stop** leaves nothing behind. A save that fails stops the others waiting
+  too, since it's most likely the internet, and says so.
+- **Playing:** [`saved-voice.js`](public/js/saved-voice.js) lists what's
+  saved, once, and `recording.js` plays a saved ayah from the phone,
+  otherwise from the CDN. The file is read whole with `fetch()` and played
+  from a `blob:` URL, rather than from its Capacitor file URL: Capacitor's
+  file server answers the range requests that seeking makes with the file
+  from its start, labelled as the range.
+- **Only in the app:** the CDN doesn't let other sites' pages read its files
+  (it sends no CORS headers), so a page in the browser can't keep them. The
+  app downloads them in native code instead.
+
+Tested on the emulator: Al-Fatiha and Al-Ikhlas saved (11 files, 0.4 MB).
+Then in airplane mode, both played to the end from the phone with every word
+highlighted, and Al-Baqarah, not saved, went straight to the device's voice.
+Saving Juz ʿAmma in airplane mode failed at An-Naba and stopped the rest.
+Stopping Al-Baqarah partway kept 77 of its 286 ayahs, which were still there
+after the app restarted, and **Save** fetched the other 209. Deleting
+everything in the middle of a save left no files.
 
 ### In the Android app
 
@@ -1153,8 +1229,12 @@ it installs beside the sound-finder app.
   sets `FLAG_KEEP_SCREEN_ON` while it's listening or reading.
 - **Auto search:** listens in the background and sends a notification for each
   surah it hears. See [Auto search](#auto-search).
+- **Offline voice:** Ibrahim Walk's recording can be saved on the phone, surah
+  by surah, so English is read aloud without the internet. See
+  [Saving it for offline](#saving-it-for-offline).
 - **Microphone only:** phones can't capture another app's audio.
-- **Back button:** it closes the settings panel or surah list first, and leaves the app only
+- **Back button:** it closes the settings panel or surah list first (or the
+  offline voice, over the settings, back to them), and leaves the app only
   when nothing is open ([`MainActivity.java`](app/android/app/src/main/java/io/github/fardanrashidi/quranwhisperer/MainActivity.java)).
   The status bar's icons switch between light and dark with the theme.
 
@@ -1252,9 +1332,9 @@ Play support. Without it you can't send updates until then.
    ```
 
 Back up the `.jks` file and its password somewhere other than this PC. Each
-upload needs a higher `versionCode` than the last one in
-[`app/android/app/build.gradle`](app/android/app/build.gradle). `versionName`
-is what the store shows. To try the release build on a phone before uploading,
+upload needs a higher `versionCode` than the last. Both it and `versionName`
+(what the store shows) come from `package.json`'s version, so raising that is
+enough (see [Versions](#versions)). To try the release build on a phone before uploading,
 run `./gradlew assembleRelease` in `app/android`. It makes
 `app/build/outputs/apk/release/app-release.apk`, signed the same way. It can't
 replace a debug install, because the keys differ, so uninstall that first.
@@ -1396,7 +1476,22 @@ Measured on a Ryzen 7 5800X3D unless noted.
 | Loading the cached speech model                | about 1 s                                      |
 | Server memory                                  | ~120 MB; ~1.3 GB with the model loaded         |
 | Downloads on first use                         | 383 MB model, 4.4 MB text                      |
-| The recorded voice                             | about 80 KB an ayah, streamed (480 MB for the whole Quran) |
+| The recorded voice                             | about 80 KB an ayah, streamed, or saved on the phone in the app (520 MB for the whole Quran) |
+
+## Versions
+
+`package.json`'s `version` is the one place to change it, for each release:
+
+- **The settings** show it at the very bottom, with the git commit it was built
+  from when there is one: *Quran Whisperer · version 1.1.0 (4db06dc)*.
+  [`server/version.js`](server/version.js) reads both. The server sends them as
+  `/version.json`, and `app/build.mjs` writes `version.json` into the app. The
+  Home Assistant add-on has no `.git`, so it shows just the version.
+- **Android:** [`build.gradle`](app/android/app/build.gradle) reads it for
+  `versionName`, and makes `versionCode` from it: 1.2.3 is 10203, so a higher
+  version always uploads to Play.
+- **Home Assistant:** `npm run addon` writes it into the add-on's
+  `config.yaml`, so Home Assistant offers each new version as an update.
 
 ## Project layout
 
@@ -1410,6 +1505,7 @@ server/
   quran.js        lib/quran.js with the text cached on disk
   tls.js          self-signed certificate for https on the LAN
   paths.js        where the certificate and downloads go (DATA_DIR)
+  version.js      the version (package.json's) and git commit, for /version.json and the app
 public/
   index.html      the page
   style.css       the layout (controls at the bottom), sizes in rem for the text size, Arabic typography
@@ -1421,7 +1517,10 @@ public/
   js/capture-worklet.js  audio-thread capture (mono mixdown)
   js/verses-view.js      verse rendering, highlighting the ayah and the word being read, scrolling
   js/reader.js           reading a translation aloud: voice, pieces, words
-  js/recording.js        the recorded English voice: playing it, its word highlight
+  js/recording.js        the recorded English voice: playing it (saved or streamed), its word highlight
+  js/walk.js             the recorded voice's data: word timings, each ayah's file and its size
+  js/saved-voice.js      the recorded voice saved on the phone: what's saved, saving, deleting, playing a saved ayah
+  js/saved-voice-panel.js  the offline voice panel: every surah's size, Save, Stop, Delete
   js/speech.js           the browser's speechSynthesis (the app swaps in app/src/speech.js)
   js/surah-picker.js     the surah list, and auto search's history (the Heard tab)
   js/settings.js         settings: defaults, saving, change notifications
@@ -1431,7 +1530,7 @@ public/
   js/api.js              backend calls and the screen wake lock (the app swaps in app/src/api.js)
 app/              Android app: the same page, with the server's work done on the phone
   build.mjs       npm run app → app/www/ (public/ + bundled app/src/ + the Quran text)
-  src/api.js      public/js/api.js's functions, run locally (plus status bar style, keeping the screen on, auto search)
+  src/api.js      public/js/api.js's functions, run locally (plus status bar style, keeping the screen on, auto search, the offline voice)
   src/asr.js      speech-to-text, through WhisperPlugin
   src/speech.js   public/js/speech.js's functions, through SpeechPlugin
   android/        Capacitor's Android project; in app/src/main/java/…/quranwhisperer/:
@@ -1440,6 +1539,7 @@ app/              Android app: the same page, with the server's work done on the
     WhisperPlugin.java  speech to text for the page
     SpeechPlugin.java   Android text-to-speech: voices, speak, stop, word events, downloading voices
     ScreenPlugin.java   keeps the screen on
+    SavedVoicePlugin.java  saves the recorded voice on the phone, ayah by ayah, for offline
     AutoSearchService.java   auto search: background listening, checks, notifications
     AutoSearchTile.java      its Quick Settings tile
     AutoSearchActivity.java  starts it from a screen (permissions, and Android's microphone rule)
@@ -1478,13 +1578,14 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   can fall behind the reciter, and it only finds out where they've got to
   between ayahs, a few seconds after the voice stops. So it can be slow to
   notice that they've moved to another surah. Headphones with **keep listening
-  while reading** avoid that, and so does turning reading aloud off under
-  **Listen button**.
+  while reading** avoid that, and so does turning off **read aloud when Listen
+  finds the ayah**.
 - **The word highlight** of a device's voice depends on the voice reporting its
   words. Some don't (eSpeak NG on Android, for one), and then only the ayah is
   marked. The recorded voice's highlight comes from a speech model's timings,
   so now and then a word is marked a little early or late.
-- **The recorded voice needs the internet**, and it's English only. No one
+- **The recorded voice needs the internet** in a browser, and in the app for
+  surahs that haven't been saved. It's English only. No one
   has recorded the Malay translation. alquran.cloud has ayah-by-ayah
   recordings of a few others (Urdu, French, Russian, Chinese, Uzbek, Kazakh),
   which the app doesn't use yet.

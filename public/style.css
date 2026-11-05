@@ -714,6 +714,57 @@ body:not(.tajweed) .tajweed-key,
   font-size: 1.0625rem;
 }
 
+/* A line under a section's title, saying what it's for */
+.settings .about {
+  margin: 0 0 0.25rem;
+  color: var(--dim);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* A section folded away (Advanced): its title opens it */
+.settings details > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  margin-top: 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings details > summary h3 {
+  margin: 0;
+}
+
+.settings details > summary::after {
+  content: '▸';
+  color: var(--accent);
+  transition: transform 0.2s;
+}
+
+.settings details[open] > summary::after {
+  transform: rotate(90deg);
+}
+
+.settings details > summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Which version this is, under everything */
+.settings .version {
+  margin: 1rem 0 0;
+  color: var(--dim);
+  font-size: 0.8125rem;
+  text-align: center;
+  user-select: text;
+}
+
 .settings .row {
   display: flex;
   flex-wrap: wrap; /* the control goes under its label when there's no room beside it */
@@ -1224,6 +1275,69 @@ input[type='color']:disabled {
 .surah-list .note {
   padding: 0.75rem 0.25rem;
   color: var(--dim);
+}
+
+/* --- the offline voice: saving the recording, surah by surah --- */
+
+.saved-summary {
+  margin: 0.75rem 0 0;
+  font-weight: 600;
+}
+
+.saved-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.saved-actions button {
+  min-height: 3rem;
+}
+
+.saved-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.saved-list li {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 0.75rem;
+  min-height: 3.75rem;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.saved-list .number {
+  grid-row: span 2;
+  text-align: center;
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.saved-list .english {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.saved-list .status {
+  grid-column: 2;
+  color: var(--dim);
+  font-size: 0.875rem;
+}
+
+.saved-list li.saved .status {
+  color: var(--accent);
+}
+
+.saved-list button {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  min-width: 5.5rem;
 }
 
 @keyframes pulse {

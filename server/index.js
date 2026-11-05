@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { loadModel, transcribe } from './asr.js';
 import { locate, getSurah, listSurahs, warmUp } from './quran.js';
 import { loadOrCreateCert, lanAddresses } from './tls.js';
+import { versionInfo } from './version.js';
 
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -26,6 +27,8 @@ const MIME_TYPES = {
 };
 
 const tlsOptions = loadOrCreateCert();
+// Shown at the bottom of the settings (the app's comes from app/build.mjs instead)
+const VERSION = JSON.stringify(versionInfo());
 
 async function handle(req, res) {
   const url = new URL(req.url, 'http://localhost');
@@ -54,6 +57,10 @@ async function handle(req, res) {
     if (surahRoute && req.method === 'GET') {
       const surah = await getSurah(Number(surahRoute[1]), url.searchParams.get('translation') ?? 'en');
       return surah ? sendJson(res, 200, { surah }) : sendJson(res, 404, { error: 'No such surah' });
+    }
+    if (url.pathname === '/version.json' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+      return res.end(VERSION);
     }
     if (url.pathname.startsWith('/api/')) return sendJson(res, 404, { error: 'Not found' });
     if (req.method === 'GET' || req.method === 'HEAD') return await serveStatic(url.pathname, res);

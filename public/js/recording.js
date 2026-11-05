@@ -1,8 +1,11 @@
 // The recorded English translation: Ibrahim Walk reading Saheeh International (the
-// translation shown), one file per ayah from alquran.cloud's CDN. When each word
-// is said comes from data/walk-timings.json (made by scripts/walk-timings.mjs),
-// so the word being read can be highlighted as with a device voice.
-const TIMINGS = 'data/walk-timings.json';
+// translation shown), one file per ayah from alquran.cloud's CDN, or from the phone
+// for a surah that's been saved (saved-voice.js). When each word is said comes from
+// data/walk-timings.json (walk.js), so the word being read can be highlighted as
+// with a device voice.
+import { loadTimings, ayahNumber, audioUrl } from './walk.js';
+import { savedCopy } from './saved-voice.js';
+
 const SKIP_SILENCE = 0.4; // s: a file that starts with more silence than this starts just before the sound
 const LEAD_IN = 0.15; // s: how long before the sound that is
 const TAIL = 0.15; // s after the sound ends to call it finished, rather than playing the silence after it
@@ -16,16 +19,15 @@ const SILENCE = `data:audio/wav;base64,${btoa(
   ),
 )}`;
 
-/** Whether this browser can play the recording (it needs the internet too). */
+/** Whether this browser can play the recording (it needs the internet too, for a surah that isn't saved). */
 export const supported = typeof Audio !== 'undefined';
 
-let timings = null; // promise of the parsed file
 let current = null; // { audio, finish(result) } for what's playing
 // Two players take turns: one plays an ayah while the other loads the next. The
 // same two throughout, because Safari only lets a player that was started by a
 // tap play sound, and the reading starts later (once Listen has found the ayah).
 const players = supported ? [newAudio(), newAudio()] : [];
-let next = null; // { n, audio }: the ayah loading ahead
+let next = null; // { n, audio, loading }: the ayah loading ahead, and a promise of its source being set
 
 /**
  * Plays an ayah's recording, stopping anything already playing.
@@ -49,18 +51,20 @@ export async function play({ surah, ayah }, text, { rate, onWord }) {
   }
   if (current !== entry) return false;
 
-  const n = data.surahStarts[surah - 1] + ayah; // counting from 1:1, as the files are
+  const n = ayahNumber(data, surah, ayah);
   const words = [...text.matchAll(/\S+/g)];
   const timing = data.ayahs[n - 1];
   // Without timings that fit the text (a different translation text, say), it still plays, just unhighlighted.
   const times = timing?.w.length === words.length ? timing.w : null;
-  let audio;
-  if (next?.n === n && !next.audio.error) audio = next.audio;
+  let audio, loading;
+  if (next?.n === n && !next.audio.error) ({ audio, loading } = next);
   else {
     audio = players.find((p) => p !== next?.audio);
-    audio.src = url(data, n);
+    loading = load(audio, data, n);
   }
   next = null;
+  await loading;
+  if (current !== entry) return false;
   entry.audio = audio;
   // Where the sound starts, or the first word if that's earlier: never past anything that can be heard.
   const start = Math.min(timing?.s ?? 0, times?.find((t) => t !== null) ?? Infinity) / 100;
@@ -68,8 +72,8 @@ export async function play({ surah, ayah }, text, { rate, onWord }) {
   audio.defaultPlaybackRate = audio.playbackRate = rate;
   // The next ayah, on the other player, so reading on doesn't wait for it to download.
   if (n < data.ayahs.length) {
-    next = { n: n + 1, audio: players.find((p) => p !== audio) };
-    next.audio.src = url(data, n + 1);
+    const other = players.find((p) => p !== audio);
+    next = { n: n + 1, audio: other, loading: load(other, data, n + 1) };
   }
 
   return new Promise((resolve) => {
@@ -138,20 +142,23 @@ export function stop() {
   current = null;
 }
 
-function loadTimings() {
-  timings ??= fetch(TIMINGS)
-    .then((res) => {
-      if (!res.ok) throw new Error(`couldn't load ${TIMINGS} (HTTP ${res.status})`);
-      return res.json();
-    })
-    .catch((err) => {
-      timings = null; // try again next time
-      throw err;
-    });
-  return timings;
-}
+const loads = new WeakMap(); // player → the ayah it was last told to load
 
-const url = (data, n) => data.audio.replace('{n}', n);
+/** Points a player at ayah `n`: its copy saved on the phone, or else the internet. */
+async function load(audio, data, n) {
+  loads.set(audio, n);
+  const saved = await savedCopy(n).catch((err) => {
+    console.warn(err);
+    return null;
+  });
+  if (loads.get(audio) !== n) {
+    // told to load another meanwhile
+    if (saved) URL.revokeObjectURL(saved);
+    return;
+  }
+  if (audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
+  audio.src = saved ?? audioUrl(data, n);
+}
 
 function newAudio() {
   const audio = new Audio();

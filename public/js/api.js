@@ -48,6 +48,9 @@ export function styleSystemBars(dark) {}
  */
 export const autoSearch = { supported: false, history: async () => [], clearHistory: async () => {} };
 
+/** Saving the recorded voice for offline is only in the app too; a browser streams it. */
+export const savedVoice = { supported: false };
+
 /** In the app, calls back with { surah, ayah } when it's opened from one of auto search's notifications. */
 export function onOpenAyah(callback) {}
 

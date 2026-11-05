@@ -8,6 +8,7 @@ import { loadModel, transcribe } from './asr.js';
 const quran = createQuran(cachedEdition);
 const Screen = registerPlugin('Screen');
 const AutoSearch = registerPlugin('AutoSearch');
+const SavedVoice = registerPlugin('SavedVoice');
 
 /**
  * @param {number | null | undefined} near word index of the last match, to keep following from there
@@ -65,6 +66,33 @@ export const autoSearch = {
   /** What it's heard, newest first. @returns {Promise<{ surah: number, from: number, to: number, start: number, end: number }[]>} the ayahs, and when (ms) */
   history: async () => (await AutoSearch.history()).entries.reverse(),
   clearHistory: () => AutoSearch.clearHistory(),
+};
+
+/**
+ * The recorded voice saved on the phone (SavedVoicePlugin.java), so the translation
+ * can be read aloud without the internet. public/js/saved-voice.js keeps track of it.
+ * Ayahs are numbered from 1 (1:1) to 6236 (114:6), as the recording's files are.
+ */
+export const savedVoice = {
+  supported: Capacitor.isNativePlatform(),
+  /** @returns {Promise<{ path: string, ayahs: number[], bytes: number }>} what's saved, and where */
+  status: () => SavedVoice.status(),
+  /**
+   * Saves ayahs `from`–`to` that aren't saved yet, from `url` ({n} for each one's number),
+   * after any saves already asked for. Resolves true once they all are, false if cancelled.
+   */
+  save: async (id, url, from, to) => (await SavedVoice.save({ id, url, from, to })).saved,
+  /** Stops one save (by its id), or without an id, all of them. */
+  cancel: (id) => SavedVoice.cancel(id ? { id } : {}),
+  /** Deletes ayahs `from`–`to`, or without them, every one. */
+  remove: (from, to) => SavedVoice.remove(from ? { from, to } : {}),
+  /** @param {(e: { id: string }) => void} onStart a save has begun @param {(e: { id: string, ayah: number, bytes: number }) => void} onSaved one more ayah */
+  listen(onStart, onSaved) {
+    SavedVoice.addListener('start', onStart);
+    SavedVoice.addListener('saved', onSaved);
+  },
+  /** A saved ayah's file, as a URL the page can fetch. */
+  fileUrl: (path, n) => Capacitor.convertFileSrc(`${path}/${n}.mp3`),
 };
 
 /** Calls back with { surah, ayah } when the app is opened from one of auto search's notifications. */

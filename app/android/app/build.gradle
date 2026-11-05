@@ -1,5 +1,10 @@
 apply plugin: 'com.android.application'
 
+// The version is package.json's, so there's one place to change it. Play needs each upload's
+// versionCode higher than the last: 1.2.3 is 10203.
+def appVersion = new groovy.json.JsonSlurper().parse(rootProject.file('../../package.json')).version
+def appVersionCode = appVersion.tokenize('.').take(3).inject(0) { code, part -> code * 100 + (part.replaceAll('[^0-9].*', '') as int) }
+
 // Release builds are signed with the upload key named in app/android/keystore.properties, which isn't in git
 def keystoreFile = rootProject.file('keystore.properties')
 def keystore = new Properties()
@@ -12,8 +17,8 @@ android {
         applicationId "io.github.fardanrashidi.quranwhisperer"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             // Phones, and the emulator. ONNX Runtime also ships 32-bit builds, which would double its size.
