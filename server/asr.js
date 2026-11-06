@@ -25,13 +25,21 @@ export function loadModel() {
   return model;
 }
 
+const SAMPLE_RATE = 16000;
+const TOKENS_PER_SECOND = 25;
+const TOKENS_EXTRA = 32;
+const MAX_TOKENS = 444; // the model's 448, less the 4 it starts with
+
 /** @param {Buffer} pcm 16 kHz mono s16le audio */
 export async function transcribe(pcm) {
   const asr = await loadModel();
   const audio = new Float32Array(pcm.length >> 1);
   for (let i = 0; i < audio.length; i++) audio[i] = pcm.readInt16LE(i * 2) / 32768;
 
-  const run = queue.then(() => asr(audio, { language: 'arabic', task: 'transcribe' }));
+  // A word with its vowel marks is about 8 tokens, and reciters say at most about three words
+  // a second: more than this is the model going round in circles (on noise, say).
+  const max_new_tokens = Math.min(MAX_TOKENS, TOKENS_EXTRA + Math.round((TOKENS_PER_SECOND * audio.length) / SAMPLE_RATE));
+  const run = queue.then(() => asr(audio, { language: 'arabic', task: 'transcribe', max_new_tokens }));
   queue = run.catch(() => {});
   return (await run).text.trim();
 }

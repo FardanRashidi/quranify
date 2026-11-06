@@ -10,6 +10,7 @@ import * as saved from './saved-voice.js';
 import { SavedVoicePanel, megabytes, savedSurahs } from './saved-voice-panel.js';
 import { autoSearch, fetchSurah } from './api.js';
 import { TRANSLATIONS, translation } from './translations.js';
+import { PREFERRED_MICROPHONE } from './listener.js';
 
 // 51:21, "And in yourselves. Then will you not see?": short, with all five colours.
 const PREVIEW = [
@@ -621,8 +622,9 @@ async function listMicrophones(entry) {
     inputs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput' && d.deviceId !== 'default');
   } catch {}
   entry.row.hidden = inputs.length < 2;
+  const preferred = inputs.some((d) => d.label === PREFERRED_MICROPHONE);
   select.replaceChildren(
-    new Option('Default', ''),
+    new Option(preferred ? `Default (${PREFERRED_MICROPHONE})` : 'Default', ''),
     ...inputs.map((d, i) => new Option(d.label || `Microphone ${i + 1}`, d.deviceId)),
   );
   entry.update();

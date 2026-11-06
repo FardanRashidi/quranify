@@ -18,12 +18,21 @@ const LOUDEST_MEMORY = 4; // s: the loudest lately fades over about this long
 // Silence longer than this is the reciter stopping, rather than a breath between ayahs or
 // surahs: it doesn't count towards how long they've been reciting.
 const STOP = 2.5; // s
+// Chrome on Android names a phone's microphones by how it routes the sound: "Speakerphone"
+// and "Headset earpiece". Left on the default, the app takes the speakerphone's, the one
+// for hearing a room, which suits a recitation playing from a speaker.
+export const PREFERRED_MICROPHONE = 'Speakerphone';
 
 export class Listener {
   /** Called when the audio source goes away (e.g. the user stops tab sharing). */
   onEnded = null;
   /** Called once each time the sound stops for a pause, with when it stopped (performance.now()). */
   onPause = null;
+  /**
+   * Returns true while what it hears is the app's own voice, reading the translation
+   * through the speaker: then it doesn't measure the sound, or find pauses in it.
+   */
+  isDeaf = null;
 
   #stream = null;
   #ctx = null;
@@ -35,6 +44,7 @@ export class Listener {
   #loudest = 0; // RMS, fading
   #quiet = Infinity; // seconds since the last sound: none yet, so no pause to report
   #reciting = 0; // seconds of reciting heard since it started: sound, and the pauses in it shorter than STOP
+  #sounds = []; // [start, end] (performance.now()) of each stretch of sound in the last RING_SECONDS
 
   get active() {
     return this.#ctx !== null;
@@ -53,9 +63,17 @@ export class Listener {
     return this.#reciting;
   }
 
+  /** Seconds of sound heard since `t` (performance.now()), not counting the app's own voice. */
+  soundSince(t) {
+    let seconds = 0;
+    for (const [start, end] of this.#sounds) if (end > t) seconds += (end - Math.max(start, t)) / 1000;
+    return seconds;
+  }
+
   /**
    * @param {'mic' | 'tab'} source
-   * @param {string} [microphone] a deviceId; one that's gone falls back to the default
+   * @param {string} [microphone] a deviceId; one that's gone falls back to the default.
+   *   '' is the default: PREFERRED_MICROPHONE where there's one.
    */
   async start(source, microphone = '') {
     if (!navigator.mediaDevices) {
@@ -63,10 +81,19 @@ export class Listener {
     }
     // Voice processing is tuned for calls, and can strip a recitation out as echo or noise, so turn it all off.
     const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-    const stream =
-      source === 'tab'
-        ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio, systemAudio: 'include' })
-        : await navigator.mediaDevices.getUserMedia({ audio: microphone ? { ...audio, deviceId: { ideal: microphone } } : audio });
+    const open = (id) => navigator.mediaDevices.getUserMedia({ audio: id ? { ...audio, deviceId: { ideal: id } } : audio });
+    let stream;
+    if (source === 'tab') stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio, systemAudio: 'include' });
+    else {
+      const preferred = microphone ? null : await preferredMicrophone();
+      stream = await open(microphone || preferred);
+      // The first time, the microphones only get their names once it's allowed to use one
+      const now = microphone || preferred ? null : await preferredMicrophone();
+      if (now && stream.getAudioTracks()[0]?.getSettings().deviceId !== now) {
+        stream.getTracks().forEach((track) => track.stop());
+        stream = await open(now);
+      }
+    }
 
     try {
       stream.getVideoTracks().forEach((track) => track.stop());
@@ -96,6 +123,7 @@ export class Listener {
       this.#loudest = 0;
       this.#quiet = Infinity;
       this.#reciting = 0;
+      this.#sounds = [];
       capture.port.onmessage = ({ data }) => this.#push(data);
       this.#stream = stream;
       this.#ctx = ctx;
@@ -196,16 +224,41 @@ export class Listener {
     for (let i = 0; i < chunk.length; i++) sumSquares += chunk[i] * chunk[i];
     const rms = Math.sqrt(sumSquares / chunk.length);
     const seconds = chunk.length / this.#ctx.sampleRate;
+    if (this.isDeaf?.()) {
+      // The voice, over whatever else there is: the reciter is taken to carry on meanwhile
+      this.#reciting += seconds;
+      this.#quiet = 0;
+      return;
+    }
     this.#loudest = Math.max(rms, this.#loudest * Math.exp(-seconds / LOUDEST_MEMORY));
     if (rms > SILENCE_RMS && rms >= this.#loudest * PAUSE_LEVEL) {
       if (this.#quiet < STOP) this.#reciting += this.#quiet; // a pause, not a stop
       this.#reciting += seconds;
       this.#quiet = 0;
+      this.#heardSound(this.#lastChunkAt - seconds * 1000, this.#lastChunkAt);
       return;
     }
     const before = this.#quiet;
     this.#quiet += seconds;
     if (before < PAUSE && this.#quiet >= PAUSE) this.onPause?.(this.#lastChunkAt - this.#quiet * 1000);
+  }
+
+  #heardSound(start, end) {
+    const sounds = this.#sounds;
+    const last = sounds.at(-1);
+    if (last && start - last[1] < 100) last[1] = end;
+    else sounds.push([start, end]);
+    while (sounds.length && sounds[0][1] < end - RING_SECONDS * 1000) sounds.shift();
+  }
+}
+
+/** The deviceId of the PREFERRED_MICROPHONE, if there's one (and it has its name yet). */
+async function preferredMicrophone() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.find((d) => d.kind === 'audioinput' && d.label === PREFERRED_MICROPHONE)?.deviceId ?? null;
+  } catch {
+    return null;
   }
 }
 

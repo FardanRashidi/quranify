@@ -35,6 +35,12 @@ final class Whisper implements AutoCloseable {
     private static final long[] PROMPT = { 50258, 50272, 50359, 50363 }; // <|startoftranscript|> <|ar|> <|transcribe|> <|notimestamps|>
     private static final int END = 50257; // <|endoftext|>, also the first of the special tokens
     private static final int MAX_LENGTH = 448;
+    // A word with its vowel marks is about 8 tokens, and reciters say at most about three
+    // words a second: more tokens than this for the audio is the model going round in
+    // circles (on noise, say), which otherwise runs on to MAX_LENGTH, 30 s on a phone.
+    private static final int TOKENS_PER_SECOND = 25, TOKENS_EXTRA = 32;
+    // A run of the same token, or of the same few, repeated this many times is the same.
+    private static final int SAME_TOKEN_RUN = 8, SAME_PHRASE_RUN = 4, LONGEST_PHRASE = 16;
     private static final int[] SUPPRESS = {
         1, 2, 7, 8, 9, 10, 14, 25, 26, 27, 28, 29, 31, 58, 59, 60, 61, 62, 63, 90, 91, 92, 93, 359, 503, 522, 542, 873,
         893, 902, 918, 922, 931, 1350, 1853, 1982, 2460, 2627, 3246, 3253, 3268, 3536, 3846, 3961, 4183, 4667, 6585, 6647,
@@ -69,7 +75,8 @@ final class Whisper implements AutoCloseable {
             OnnxTensor input = OnnxTensor.createTensor(env, FloatBuffer.wrap(features), new long[] { 1, MELS, FRAMES });
             OrtSession.Result encoded = encoder.run(singleton("input_features", input))
         ) {
-            return text(decode((OnnxTensor) encoded.get(0)));
+            int most = Math.min(MAX_LENGTH - PROMPT.length, TOKENS_EXTRA + TOKENS_PER_SECOND * audio.length / SAMPLE_RATE);
+            return text(decode((OnnxTensor) encoded.get(0), most));
         }
     }
 
@@ -81,8 +88,8 @@ final class Whisper implements AutoCloseable {
 
     // Decoding
 
-    /** Picks the likeliest next token until the model says it's done. */
-    private List<Integer> decode(OnnxTensor encoded) throws OrtException {
+    /** Picks the likeliest next token until the model says it's done (or `most` tokens, or it goes round in circles). */
+    private List<Integer> decode(OnnxTensor encoded, int most) throws OrtException {
         List<Integer> out = new ArrayList<>();
         OrtSession.Result first = null; // keeps the cross-attention cache, which stays the same after the first step
         OrtSession.Result last = null; // keeps the self-attention cache
@@ -113,7 +120,9 @@ final class Whisper implements AutoCloseable {
 
                 int next = argmax((OnnxTensor) result.get("logits").get(), out.isEmpty());
                 out.add(next);
-                if (next == END || PROMPT.length + out.size() >= MAX_LENGTH) return out;
+                if (next == END || out.size() >= most) return out;
+                int repeats = looping(out);
+                if (repeats > 0) return new ArrayList<>(out.subList(0, out.size() - repeats));
                 ids = new long[] { next };
             }
         } finally {
@@ -121,6 +130,19 @@ final class Whisper implements AutoCloseable {
             if (last != null && last != first) last.close();
             if (first != null) first.close();
         }
+    }
+
+    /** How many tokens at the end of `out` repeat the ones before them, when it's going round in circles; else 0. */
+    private static int looping(List<Integer> out) {
+        int n = out.size();
+        for (int period = 1; period <= LONGEST_PHRASE; period++) {
+            int times = period == 1 ? SAME_TOKEN_RUN : SAME_PHRASE_RUN;
+            if (n < period * times) break;
+            boolean same = true;
+            for (int i = n - period * (times - 1); i < n && same; i++) same = out.get(i).equals(out.get(i - period));
+            if (same) return period * (times - 1); // keeps one
+        }
+        return 0;
     }
 
     private static int argmax(OnnxTensor logits, boolean firstToken) {

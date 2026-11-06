@@ -24,6 +24,12 @@ const SAY_WORDS = 3;
 const NEAR_END = 2;
 // And it's taken as the end without waiting for the check if, at their pace, they'd have got there.
 const EXPECT_END = 1;
+// But not if they'd have got there more than this long before the pause (after a while
+// unheard, say, while the translation was read through the speaker): it could be the end
+// of any ayah since, or of the recitation, so that's left to the check.
+const PAST_END = 3; // seconds
+// Nor after this long without a check placing them: by then the pace is too rough a guess.
+const ANTICIPATE_WITHIN = 10; // seconds
 // Checks can't keep up with ayahs that are over before the next check comes round,
 // so through those it moves on by the reciter's pace, without hearing each one end:
 // ayahs that take up to this many times the time from one check to the next. Tried on
@@ -126,8 +132,10 @@ export class Follower {
    */
   anticipate(stoppedAt, verse, ayahs) {
     if (!this.#heard || !verse || this.#anticipated || this.at.ayah >= ayahs) return null;
+    if (stoppedAt - this.#heard.at > ANTICIPATE_WITHIN * 1000) return null;
     const wordsLeft = verse.firstWord + verse.words - 1 - this.#heard.word;
-    if (wordsLeft > EXPECT_END * this.pace * Math.max(0, (stoppedAt - this.#heard.at) / 1000)) return null;
+    const said = EXPECT_END * this.pace * Math.max(0, (stoppedAt - this.#heard.at) / 1000);
+    if (wordsLeft > said || said - wordsLeft > PAST_END * this.pace + LAST_WORD) return null;
     this.at = { surah: this.at.surah, ayah: this.at.ayah + 1 };
     this.#anticipated = this.at;
     return this.at;
