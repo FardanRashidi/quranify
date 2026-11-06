@@ -419,11 +419,13 @@ function nearItsEnd(surah, ayah) {
 
 /**
  * Found in a surah they were heard beginning (its Basmala, since it started listening),
- * and no further in than they had time to say since: they've recited it from the top.
+ * and no further in than they could have got since: they've recited it from the top.
+ * Their pace is only a first guess yet, so it goes by the most they could have said
+ * (Al-Fatiha, found at its fourth ayah after its Basmala, is 14 words in).
  */
 function fromTheTop(match, clip) {
   if (match.ayah <= 1 || state.basmalaAt < state.listenStartedAt) return false;
-  return match.word - match.surahStart + 1 <= follower.saidIn(clip.recitingSeconds - state.basmalaReciting);
+  return match.word - match.surahStart + 1 <= follower.reachIn(clip.recitingSeconds - state.basmalaReciting);
 }
 
 function moveAlong(ayah) {
