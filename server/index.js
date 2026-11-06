@@ -5,14 +5,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadModel, transcribe } from './asr.js';
-import { locate, getSurah, listSurahs, warmUp } from './quran.js';
+import { locate, getSurah, listSurahs, warmUp, isBasmala } from './quran.js';
 import { loadOrCreateCert, lanAddresses } from './tls.js';
 import { versionInfo } from './version.js';
 
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
-const MAX_AUDIO_BYTES = 12 * 16000 * 2; // the page keeps 12 s of audio; this is that much 16 kHz s16le
+const MAX_AUDIO_BYTES = 30 * 16000 * 2; // the page keeps 30 s of audio (all the speech model takes); this is that much 16 kHz s16le
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -48,7 +48,8 @@ async function handle(req, res) {
       const near = url.searchParams.has('near') ? Number(url.searchParams.get('near')) : null;
       const surah = url.searchParams.has('surah') ? Number(url.searchParams.get('surah')) : null;
       if (surah !== null && !(Number.isInteger(surah) && surah >= 1 && surah <= 114)) return sendJson(res, 400, { error: 'No such surah' });
-      return sendJson(res, 200, { match: await locate(transcript, near, surah), transcript });
+      const match = await locate(transcript, near, surah);
+      return sendJson(res, 200, { match, transcript, basmala: match === null && isBasmala(transcript) });
     }
     if (url.pathname === '/api/quran/surahs' && req.method === 'GET') {
       return sendJson(res, 200, { surahs: await listSurahs() });

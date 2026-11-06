@@ -20,7 +20,18 @@ const RETRY_AFTER_ERROR = 10;
 const MAX_RETRY_AFTER_ERROR = 60;
 const MIN_AUDIBLE = 3; // seconds of actual sound a clip needs before it's worth sending
 const MIN_AUDIBLE_IN_SURAH = 2;
-const LOST_AFTER = 12; // following: seconds without placing the reciter before the verses dim
+// Following: seconds without placing the reciter before the verses dim, once a check
+// has come back without hearing them. (A slow check on its way doesn't count: on a
+// phone that takes a few seconds a check, waiting for one isn't not hearing them.)
+const LOST_AFTER = 12;
+// Looking back over the audio kept for the end of the surah the reciter's left: at most
+// this much (all the speech model takes at once), and at least this much to be worth it.
+const LOOK_BACK_MAX = 28;
+const LOOK_BACK_MIN = 2;
+const CHECK_MEMORY = 0.3; // how much each check's time moves the running average of how long they take
+// The voice reading aloud through the speaker stops too: a pause this soon after is the voice's, not the reciter's.
+const VOICE_TAIL = 1000; // ms
+const BASMALA_WORDS = 4;
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2]; // what the reading speed button steps through
 // Reading every ayah while following: this much faster for each ayah the
 // reciter is ahead, up to the most. Further behind than that, it skips to them.
@@ -113,6 +124,10 @@ const state = {
   searchFrom: null, // word index the reader was at when they asked to sync
   listenStartedAt: 0,
   heardAt: 0, // following: when a check last placed the reciter
+  heardReciting: 0, // and the listener's recitingSeconds at the end of its audio
+  missed: 0, // checks since then that didn't hear them (too quiet, or no ayah matched)
+  basmalaAt: -Infinity, // when the audio of the last check that heard the Basmala on its own ended
+  checkSeconds: null, // how long a check takes, from the end of its audio to the answer (running average)
   clipEndedAt: -Infinity, // when the audio for the latest check ended
   unsure: false, // the last match is a passage that's in more than one place
   quranReady: null, // promise: the server's speech model is loaded
@@ -127,6 +142,9 @@ const state = {
   reading: false, // reading the translation aloud, ayah after ayah
   readingAyah: null, // the ayah being read; null between ayahs (waiting for the reciter to reach the next)
   lastRead: null, // following: the last ayah read to the end in this surah, so the next can follow it; null after a jump
+  // Following, the reciter's gone on to another surah while the reading finishes this one:
+  // { surah, ayah } where they are, `from` the ayah to read it from, `until` the last ayah here to read first.
+  handover: null,
   readSession: 0, // bumped whenever a read in progress should be dropped
   readEndedAt: -Infinity, // when the voice last went quiet, so checks can leave it out
   readError: '',
@@ -157,6 +175,10 @@ async function start(follow = settings.get('listenFollow')) {
   state.lastRead = null;
   state.readOnFind = settings.get('listenRead') && !state.reading;
   state.listenStartedAt = performance.now();
+  state.heardReciting = 0; // the listener counts from 0 again
+  state.missed = 0;
+  state.basmalaAt = -Infinity;
+  state.handover = null;
   state.note = '';
   state.errors = 0;
   follower.reset();
@@ -176,6 +198,7 @@ async function start(follow = settings.get('listenFollow')) {
 }
 
 function stop() {
+  state.handover = null; // stays on the surah on screen
   // Reading along with the reciter has nothing more to go on.
   if (state.following && state.reading) stopReading();
   listener.stop();
@@ -235,13 +258,28 @@ async function attempt() {
     if (session !== state.session) return;
     state.clipEndedAt = clip.endedAt;
     if (clip.audible < (state.scope ? MIN_AUDIBLE_IN_SURAH : MIN_AUDIBLE)) return miss('Too quiet');
+    const warm = state.quranReady && !state.loadingModel; // the model's loaded: this check's time is its own
     await warmUpQuran();
     if (session !== state.session) return;
     const match = await api.recognizeQuran(clip.pcm, follower.word ?? state.searchFrom, state.scope);
     if (session !== state.session) return;
     state.errors = 0;
-    if (match) onVerse(match, clip.endedAt);
-    else miss('No ayah matched yet');
+    if (warm) {
+      const took = (performance.now() - clip.endedAt) / 1000;
+      state.checkSeconds = state.checkSeconds === null ? took : state.checkSeconds + CHECK_MEMORY * (took - state.checkSeconds);
+    }
+    if (!match) return miss('No ayah matched yet');
+    if (match.basmala) {
+      // A surah's beginning: it hears the reciter, but not where (nearly every surah starts so)
+      state.basmalaAt = clip.endedAt;
+      state.note = 'A surah is starting';
+      return schedule(follower.found ? settings.get('followMin') : SEARCH_EVERY);
+    }
+    const lookingBack = onVerse(match, clip);
+    if (lookingBack) {
+      await lookingBack; // a second check, so it's busy till it's done
+      if (session === state.session) schedule(nextDelay());
+    }
   } catch (err) {
     if (session !== state.session) return;
     console.error(err);
@@ -259,24 +297,50 @@ async function attempt() {
   }
 }
 
-function onVerse(match, endedAt) {
+/**
+ * A check found the reciter.
+ * @returns {Promise | undefined} a look back over the audio kept, when they've gone on to another surah
+ */
+function onVerse(match, clip) {
   const wasFound = follower.found;
-  const target = follower.take(match, endedAt);
+  const was = { ...follower.heard, reciting: state.heardReciting }; // where they were last heard, before this
+  const target = follower.take(match, clip.endedAt);
   state.note = '';
   if (!target) return schedule(nextDelay()); // following, and a phrase from elsewhere that could be either: stay put
   // A passage that's in more than one place: show the best guess dimmed and keep
   // listening until the reciter says something that settles it (or we run out of patience).
   state.unsure = target.unsure && performance.now() - state.listenStartedAt < settings.get('giveUpAfter') * 1000;
-  if (!target.unsure) state.heardAt = performance.now();
+  if (!target.unsure) {
+    state.heardAt = performance.now();
+    state.heardReciting = clip.recitingSeconds;
+    state.missed = 0;
+  }
   state.placed = true;
-  const moved = target.surah !== state.surah?.number || target.ayah !== state.ayah;
+  if (state.handover) {
+    // Still in the surah they've gone on to, while the reading finishes the last one
+    if (target.surah === state.handover.surah && !target.unsure) {
+      state.handover.ayah = target.ayah;
+      setStatus('following');
+      return schedule(nextDelay());
+    }
+    state.handover = null; // somewhere else again
+  }
+  if (wasFound && !target.unsure && state.following && state.reading && settings.get('readEveryAyah') && state.surah?.verses && target.surah !== state.surah.number) {
+    setStatus('following');
+    const lookingBack = handOver(match, was, clip, target);
+    if (!lookingBack) schedule(nextDelay());
+    return lookingBack;
+  }
+  // Through short ayahs, it's where their pace says they are by now (the check's audio ended a moment ago)
+  const ayah = !target.unsure && state.surah?.number === target.surah ? (follower.reckon(performance.now(), state.surah.verses, turnaround()) ?? target.ayah) : target.ayah;
+  const moved = target.surah !== state.surah?.number || ayah !== state.ayah;
   // The reciter went somewhere that doesn't carry on from where they were: another
   // surah, or another part of this one (a repeat of the last few words still carries on).
   const jumped = wasFound && (target.surah !== state.surah?.number || !match.continues);
   if (state.surah?.number === target.surah) {
     if (jumped) state.lastRead = null;
     // Reading that's behind the reciter keeps the verse being read in view instead.
-    setAyah(target.ayah, !(state.following && wasFound) ? true : readingLeads() ? false : 'follow');
+    setAyah(ayah, !(state.following && wasFound) ? true : readingLeads() ? false : 'follow');
   } else showSurah(target.surah, target.ayah);
   const startsReading = state.readOnFind && !state.unsure && !state.reading;
   if (!state.unsure) state.readOnFind = false;
@@ -306,15 +370,140 @@ function onVerse(match, endedAt) {
  * @param {number} stoppedAt when the sound stopped
  */
 function onPause(stoppedAt) {
-  if (!state.following || !follower.found || state.unsure) return;
-  if (micHearsReading() && state.readingAyah !== null) return; // the voice reading aloud, between pieces
+  if (!state.following || !follower.found || state.unsure || state.handover) return;
+  // The voice reading aloud, between pieces, or as it stops
+  if (micHearsReading() && (state.readingAyah !== null || stoppedAt < state.readEndedAt + VOICE_TAIL)) return;
   if (state.clipEndedAt >= stoppedAt) return; // a check has already heard the pause
-  if (!follower.nearEnd(performance.now(), followedVerse())) return; // a breath partway through
+  const verse = followedVerse();
+  if (!follower.nearEnd(performance.now(), verse)) return; // a breath partway through
+  // At their pace they'd have finished it: on to the next, without waiting for the check to say so
+  const ahead = verse ? follower.anticipate(stoppedAt, verse, state.surah.verses.length) : null;
+  if (ahead && ahead.ayah > state.ayah) moveAlong(ahead.ayah);
   syncNow(); // or straight after the check that's under way
+}
+
+/** Following in the surah on screen: the highlight, and the reading, go on to `ayah` without a check placing them there. */
+function moveAlong(ayah) {
+  setAyah(ayah, readingLeads() ? false : 'follow');
+  if (!state.reading) return;
+  if (state.readingAyah !== null) {
+    reader.boost = catchUp();
+    return;
+  }
+  const next = nextToRead();
+  if (next !== null) readAloud(next);
+}
+
+// Seconds from one check to the next, at the quickest: how long one takes here, plus the shortest wait.
+function turnaround() {
+  return (state.checkSeconds ?? 1) + settings.get('followMin');
+}
+
+// --- from one surah to another ----------------------------------------------
+
+/**
+ * Following and reading every ayah, the reciter has turned up in another surah while
+ * the reading's still in the one on screen. If they finished it (the check heard its
+ * end, or they had time to say the rest: at their pace, over the time they've been
+ * reciting since, not counting a stop), the reading finishes it too before going on
+ * with them. Otherwise it reads up to the ayah they were last heard in. When it's only
+ * that they had time, it looks back over the audio kept to see. The new surah is read
+ * from its first ayah if they had time for that much of it as well, or a check heard
+ * its Basmala; otherwise from where they were found: in a long surah, a good way in,
+ * they've jumped there.
+ * @returns {Promise | undefined} the look back, if there is one
+ */
+function handOver(match, was, clip, target) {
+  const from = state.surah;
+  const first = from.verses[0].firstWord;
+  const last = from.verses.at(-1);
+  const end = last.firstWord + last.words - 1;
+  if (!(was.word >= first && was.word <= end)) return void goOn({ ...target, from: target.ayah, until: 0 });
+  const could = follower.saidIn(clip.recitingSeconds - was.reciting); // words they had time to say since
+  const left = end - was.word; // of this surah, the words they hadn't said yet
+  const into = match.word - match.surahStart + 1; // of the new one, from its start to where the check heard them
+  const said = match.word - match.start + 1; // and of those, the ones the check heard
+  const spans = match.start <= end && match.start >= first; // the check heard this one end and the next begin
+  // The Basmala heard since: they started the new one from the top (and it took about 4 words' time)
+  const basmala = state.basmalaAt > was.at;
+  const finished = spans || left <= 1 || left + said + (basmala ? BASMALA_WORDS : 0) <= could;
+  const topAlone = basmala || into <= could; // could have said the new one from its start, if they didn't finish this one
+  const plan = {
+    surah: target.surah,
+    ayah: target.ayah,
+    from: spans || basmala || (finished ? left : 0) + into <= could ? 1 : target.ayah,
+    until: finished ? from.verses.length : ayahOfWord(from, was.word),
+  };
+  state.handover = plan;
+  readOn();
+  if (finished && !spans && left > 1) return lookBackFor(plan, from, was, clip, topAlone);
+}
+
+/**
+ * Looks back over the audio kept, from when the reciter was last heard in `from` to
+ * the start of the check that found them in the next surah, for how far they got.
+ * If they stopped before its end, the reading stops there too.
+ * @param {boolean} topAlone they could have said the new surah from its start since
+ */
+async function lookBackFor(plan, from, was, clip, topAlone) {
+  if (state.handover !== plan) return; // nothing left to read there anyway
+  // The microphone heard the voice reading aloud meanwhile, over the reciter: it goes by the time
+  if (micHearsReading() && state.readEndedAt > was.at - 1000) return;
+  const endAt = clip.endedAt - clip.duration * 1000 + 2000; // a little into that check's audio
+  const seconds = Math.min((endAt - was.at) / 1000 + 1, LOOK_BACK_MAX);
+  if (seconds < LOOK_BACK_MIN) return;
+  try {
+    const audio = await listener.clip(seconds, endAt);
+    if (audio.audible < MIN_AUDIBLE_IN_SURAH || state.handover !== plan) return;
+    const heard = await api.recognizeQuran(audio.pcm, was.word, from.number);
+    if (!heard || heard.basmala || state.handover !== plan || state.surah !== from) return;
+    const last = from.verses.at(-1);
+    if (heard.word >= last.firstWord + last.words - 2) return; // they got to its end (or all but the last word)
+    plan.until = Math.max(heard.ayah, ayahOfWord(from, was.word));
+    plan.from = topAlone ? 1 : plan.ayah;
+    readOn();
+  } catch (err) {
+    console.error(err); // it goes by the time, then
+  }
+}
+
+// During a handover: reads on to `until`, then goes to the surah the reciter's in.
+function readOn() {
+  const plan = state.handover;
+  setAyah(Math.max(plan.until, 1), readingLeads() ? false : 'follow');
+  if (state.readingAyah !== null) return; // reading one: readAloud carries on from it
+  const next = plan.until ? nextToRead() : null;
+  if (next !== null) readAloud(next);
+  else goOn();
+}
+
+// To the surah the reciter's in, reading it from where the handover says.
+function goOn(plan = state.handover) {
+  state.handover = null;
+  const ayah = follower.at?.surah === plan.surah ? follower.at.ayah : plan.ayah;
+  showSurah(plan.surah, ayah, plan.from);
+}
+
+// A surah's English name for the status line, once the list has loaded (it loads the first time it's asked)
+const surahNames = new Map();
+let surahList = null;
+function surahName(number) {
+  surahList ??= api
+    .fetchSurahs()
+    .then((list) => list.forEach((s) => surahNames.set(s.number, s.englishName)))
+    .catch(() => (surahList = null));
+  return surahNames.get(number) ?? `surah ${number}`;
+}
+
+// The ayah of `surah` that a global word index is in
+function ayahOfWord(surah, word) {
+  const i = surah.verses.findIndex((v) => word < v.firstWord + v.words);
+  return i < 0 ? surah.verses.length : i + 1;
 }
 
 function miss(reason) {
   state.note = reason;
+  state.missed++;
   // Give up after a while without finding the reciter (or, following, without hearing them).
   if (performance.now() - listeningSince() > settings.get('giveUpAfter') * 1000) {
     state.note = follower.found ? 'Lost the reciter' : 'Couldn’t find the ayah';
@@ -337,7 +526,7 @@ function followedVerse() {
 /** Following, but nothing has placed the reciter for a while. */
 function lost() {
   if (!state.following || !follower.found || (micHearsReading() && state.readingAyah !== null)) return false;
-  return performance.now() - listeningSince() > LOST_AFTER * 1000;
+  return state.missed > 0 && performance.now() - listeningSince() > LOST_AFTER * 1000;
 }
 
 // When it last heard the reciter (or started listening), not counting time spent
@@ -422,6 +611,7 @@ async function readAloud(from = state.ayah) {
     if (state.following) {
       state.lastRead = ayah;
       const next = nextToRead();
+      if (next === null && state.handover) return goOn(); // read as far as they got here: on to where they are
       if (next === null) {
         pauseReading(); // until the reciter reaches the next one (onVerse starts again)
         return renderReading();
@@ -474,6 +664,7 @@ function stopReading(error = '') {
   pauseReading();
   state.reading = false;
   state.readError = error;
+  if (state.handover) goOn(); // nothing more to read here: on to where the reciter is
   renderReading();
 }
 
@@ -535,7 +726,8 @@ function renderScope() {
   renderListenButtons();
 }
 
-async function showSurah(number, ayah) {
+/** @param {number} [readFrom] reading aloud, the ayah to read from once it's loaded (else the one on screen) */
+async function showSurah(number, ayah, readFrom = null) {
   const placeholder = { number };
   state.surah = placeholder; // so further matches in this surah don't refetch it
   state.ayah = ayah;
@@ -564,7 +756,7 @@ async function showSurah(number, ayah) {
     versesView.showVerses(surah, [els.nowPlaying, tajweedKey()], translation);
     renderTajweed();
     setAyah(state.ayah, true); // the latest match may have arrived while loading
-    if (state.reading) readAloud();
+    if (state.reading) readAloud(readFrom ?? state.ayah);
   } catch (err) {
     if (state.surah === placeholder) versesView.message(`Couldn’t load the surah: ${err.message}`);
   }
@@ -614,6 +806,7 @@ function setAyah(ayah, scroll = true) {
 
 // The reader moving through the verses themselves: − +, the arrow keys, or a tap.
 function goTo(ayah, scroll) {
+  state.handover = null; // the reader's chosen where to be
   setAyah(ayah, scroll);
   state.placed = true;
   if (state.reading) readAloud(); // read from here instead
@@ -630,6 +823,11 @@ function frame() {
   if (settings.get('meter')) {
     listener.levels(METER_BARS).forEach((level, i) => (els.meter.children[i].style.transform = `scaleY(${Math.max(METER_MIN, level)})`));
   }
+  // Through short ayahs, on by the reciter's pace between checks
+  if (state.following && follower.found && !state.unsure && !state.handover && state.surah?.verses && state.surah.number === follower.at.surah) {
+    const ayah = follower.reckon(performance.now(), state.surah.verses, turnaround());
+    if (ayah > state.ayah) moveAlong(ayah);
+  }
   renderStale();
   setText(els.status, statusText());
 }
@@ -637,6 +835,11 @@ function frame() {
 function statusText() {
   if (state.loadingModel) return modelLoadingText();
   if (state.unsure) return 'This passage is in more than one place. Listening a bit more…';
+  if (state.following && follower.found && state.handover && state.surah?.verses) {
+    const { surah, until } = state.handover;
+    const rest = until >= state.surah.verses.length ? 'to its end' : `up to ayah ${until}`;
+    return `Following: on to ${surahName(surah)}, ayah ${follower.at.ayah} · Reading ${state.surah.englishName} ${rest} first`;
+  }
   if (state.following && follower.found) {
     const place = state.surah?.verses ? `: ${state.surah.englishName}, ayah ${state.ayah}` : '';
     if (lost()) return `Following${place} · Can’t hear the reciter`;

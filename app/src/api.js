@@ -2,7 +2,7 @@
 // everything the server does happens here instead. The Quran speech model runs
 // on the phone, and the Quran text comes with the app.
 import { Capacitor, SystemBars, SystemBarsStyle, registerPlugin } from '@capacitor/core';
-import { createQuran, downloadEdition, BUNDLED_EDITIONS } from '../../lib/quran.js';
+import { createQuran, downloadEdition, isBasmala, BUNDLED_EDITIONS } from '../../lib/quran.js';
 import { loadModel, transcribe } from './asr.js';
 
 const quran = createQuran(cachedEdition);
@@ -15,7 +15,8 @@ const SavedVoice = registerPlugin('SavedVoice');
  * @param {number | null | undefined} surah only look in this surah
  */
 export async function recognizeQuran(pcm, near, surah) {
-  return quran.locate(await transcribe(pcm), near ?? null, surah ?? null);
+  const transcript = await transcribe(pcm);
+  return (await quran.locate(transcript, near ?? null, surah ?? null)) ?? (isBasmala(transcript) ? { basmala: true } : null);
 }
 
 /**

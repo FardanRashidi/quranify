@@ -249,15 +249,21 @@ minutes).
 3. When it hears the reciter finish an ayah, it moves on to the next one
    straight away, without waiting to hear it begin. Reciters stop for breath
    at the end of an ayah, so when they pause about where the ayah should end,
-   it checks then and there rather than waiting for the next check: the
-   highlight usually moves on in the pause, before they start the next ayah.
-4. If it can't place the reciter for 12 seconds (a long pause, noise, or a
-   passage it can't tell apart from another), the verses dim and it keeps
-   listening. After 60 seconds without placing them, it stops. **Give up
-   after**, under **listening**, sets how long, from 20 seconds to 10 minutes:
-   long enough to follow a whole prayer, with the pauses between its
-   recitations.
-5. Press **Stop** or Space to stop. The `F` key starts following whatever the
+   it moves on then and there, and checks to make sure: the highlight usually
+   moves on in the pause, before they start the next ayah.
+4. Through short ayahs, ones over before the next check could come round (like
+   At-Takwir's, three words each), it doesn't wait to hear each one end. It
+   moves on when the reciter's pace says they've finished, and the checks
+   keep it right.
+5. If a check comes back without placing the reciter, and it's been 12 seconds
+   since one did (a long pause, noise, or a passage it can't tell apart from
+   another), the verses dim, the status says *Can't hear the reciter*, and it
+   keeps listening. A check that's slow to come back doesn't count, and nor
+   does one that hears only the Basmala: that's the reciter starting a surah.
+   After 60 seconds without placing them, it stops. **Give up after**, under
+   **listening**, sets how long, from 20 seconds to 10 minutes: long enough to
+   follow a whole prayer, with the pauses between its recitations.
+6. Press **Stop** or Space to stop. The `F` key starts following whatever the
    setting says, and stops it when pressed again. Pressed while Listen is
    still searching with following off, it carries on following once it finds
    the place.
@@ -291,14 +297,43 @@ well it keeps up.
    being read stays in view, with the
    reciter's still highlighted. If it finishes first, it waits for the
    reciter to start the next ayah. **Stop** stops both.
-5. **When the reciter goes somewhere else**, reading goes with them instead of
-   carrying on through ayahs they've left. That's another surah (the imam
-   moving on from Al-Fatiha, say), a part of the same surah that doesn't carry
-   on from where they were, or more than 10 ayahs ahead of the reading. A
-   reciter going back over the last few words (or the last ayah or two) is
-   repeating them, so that isn't read again: reading waits for them to come
-   past it. With **read every ayah** off, it skips to the reciter's ayah each
-   time it finishes one, as it used to.
+5. **When the reciter goes on to another surah**, with the reading still
+   behind in the last one, it works out what they did in between:
+   - **Did they finish the last surah?** Yes if a check heard its end, or if
+     they had time to say the rest, at their pace, over the time they've been
+     reciting since. A silence of 2.5 seconds or more is a stop, and doesn't
+     count. Then the reading finishes that surah first. The status line says
+     *Following: on to Al-Falaq, ayah 2 · Reading Al-Ikhlaas to its end
+     first*. Otherwise it reads up to the ayah they were last heard in.
+   - **Did they start the new one from the top?** Yes if a check heard its
+     Basmala, or if they had time to say that much of it as well. Then it's
+     read from ayah 1, even though the reciter was first heard at ayah 2 or 3.
+     Otherwise, in a long surah a good way in, they've jumped there, and it's
+     read from where they were found.
+   - When it's only that they had time, it looks back over the last 30
+     seconds of audio for whether they did say the rest of the old surah, and
+     stops the reading where they stopped. It skips that when the microphone
+     was also hearing the voice read aloud, since that audio is mixed; then
+     the time decides.
+6. **When the reciter goes somewhere else** in the same surah, reading goes
+   with them instead of carrying on through ayahs they've left. That's a part
+   that doesn't carry on from where they were, or more than 10 ayahs ahead of
+   the reading. A reciter going back over the last few words (or the last ayah
+   or two) is repeating them, so that isn't read again: reading waits for them
+   to come past it. With **read every ayah** off, it skips to the reciter's
+   ayah each time it finishes one, as it used to, including in another surah.
+
+Tested on the Android emulator, with recordings by Alafasy played to the app as
+its microphone:
+
+| Recording | What it read |
+| --------- | ------------ |
+| Al-Ikhlas, Al-Falaq and An-Nas straight through | Each surah to its end, then the next from ayah 1, though the reciter was first heard there at ayah 2 or 3 |
+| Al-Ikhlas stopped after ayah 2, 8 s of silence, then Al-Falaq | Straight on to Al-Falaq from ayah 1, without the rest of Al-Ikhlas |
+| All of Al-Ikhlas, then Al-Mulk from ayah 13 | Al-Ikhlas to its end, then Al-Mulk from where it found them (ayah 15), not from the top |
+
+Before, it went straight to wherever the reciter was found in the new surah,
+leaving the rest of the old one unread, and the new one's first ayahs too.
 
 The microphone would hear the voice through the speaker and get confused. So
 while it reads, following pauses its checks, and afterwards it only listens to
@@ -461,7 +496,7 @@ a tap outside it.
 | appearance            | theme (dark, light, or auto to follow the device), accent colour, level meter (on the Listen button), animations |
 | tajweed               | tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour |
 | auto search           | Android app only: listening in the background, on or off; **Add** the Quick Settings tile (Android 13 and later); **Show** the history. See [Auto search](#auto-search). |
-| advanced              | folded away until it's opened: the shortest wait between checks while following (2 s, from 1 to 5) and the longest (5 s, from 2 to 15); how much audio each check hears (8 s) |
+| advanced              | folded away until it's opened: the shortest wait between checks while following (2 s, from 1 to 5) and the longest (5 s, from 2 to 15); how much audio each check hears (8 s, from 5 to 12: less is a little quicker, but hears fewer words of a slow reciter; see [Shorter checks](#shorter-checks)) |
 | about                 | the [tutorial](#the-tutorial); a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, the translation shown, the recorded voice and the speech model |
 
 The very bottom says which version it is, and which git commit it was built
@@ -493,7 +528,7 @@ into effect.
 browser (public/)                          server (server/, Node)                outside services
 ─────────────────                          ──────────────────────                ────────────────
 microphone or tab audio
- │ listener.js: AudioWorklet → 12 s ring buffer
+ │ listener.js: AudioWorklet → 30 s ring buffer
  │ clip(): last 8 s → 16 kHz mono PCM
  │
  ├── POST /api/quran/recognize?near=N&surah=S ─▶ asr.js: Whisper, on this CPU
@@ -526,8 +561,9 @@ All in [`public/js/listener.js`](public/js/listener.js) and
   `getDisplayMedia`, and the video track is dropped straight away.
 - **Capture.** An AudioWorklet runs on the browser's audio thread. It mixes the
   input down to mono and passes it to the page in batches of 2048 samples. The
-  page keeps the last 12 seconds in a ring buffer, at the device's own sample
-  rate (usually 48 kHz).
+  page keeps the last 30 seconds in a ring buffer, at the device's own sample
+  rate (usually 48 kHz). That's as much as the speech model takes at once, and
+  enough to look back over when the reciter turns up in another surah.
 - **Making a clip.** `clip(8)` copies out the latest 8 seconds, then:
   - It measures how much of the clip has sound: 100 ms windows louder than an
     RMS of 0.002 (about −54 dBFS). Clips with less than 3 seconds of sound
@@ -538,6 +574,14 @@ All in [`public/js/listener.js`](public/js/listener.js) and
     PCM, which is what the speech model expects.
   - It records `endedAt`, the moment the clip's last sample arrived. Following
     measures the reciter's pace from this.
+  - `clip(seconds, endAt)` gives the audio up to an earlier moment instead, as
+    far back as it's kept.
+- **Reciting time.** As each batch arrives, the listener keeps two running
+  measures. One finds pauses (see [When to check](#when-to-check)). The other
+  counts the seconds of reciting: sound, plus the pauses within it, but not a
+  silence of 2.5 seconds or more, which is the reciter stopping. Each clip
+  carries the count, so the difference between two, at the reciter's pace,
+  is about how many words they said in between.
 - **The meter.** The top-bar meter reads an `AnalyserNode`: 24 bands spaced
   logarithmically from 60 Hz to 8 kHz, drawn with `▁▂▃▄▅▆▇█`.
 
@@ -782,11 +826,25 @@ how soon the reciter should finish the ayah on screen:
   allow for one who's speeding up), it checks straight away rather than
   waiting for the check that's due, or right after the one under way. That
   check hears the ayah's last word, so the highlight moves on in the pause,
-  before the next ayah starts. A pause partway through an ayah (a breath at
-  a stop sign) is left to the next check. Over Al-Mulk 1–10 by Alafasy and by
-  Husary, the pause was caught at 17 of the 18 ayah ends, with background
-  noise up to 25 dB below the recitation. Louder noise hides the pauses, and
-  then it just checks on the timer as before.
+  before the next ayah starts. And if at their own pace they'd have finished
+  it, the highlight moves on as the pause begins, without waiting for the
+  check: that only confirms it, or puts it back for a breath partway. A pause
+  partway through an ayah (a breath at a stop sign) is left to the next
+  check. Over Al-Mulk 1–10 by Alafasy and by Husary, the pause was caught at
+  17 of the 18 ayah ends, with background noise up to 25 dB below the
+  recitation. Louder noise hides the pauses, and then it just checks on the
+  timer as before.
+- **Through short ayahs, by pace.** A check takes time: about 2 s on a phone,
+  and then there's the shortest wait. An ayah that's over in less than that
+  can't wait to be heard ending, or the highlight is always an ayah behind.
+  So while the ayah on screen would take the reciter less than 1.5 times
+  that round trip (the check's time, as measured on the device, plus the
+  shortest wait), the highlight moves on when their pace says they've said
+  its last word, and on through the short ayahs after it. It goes at most
+  6 seconds past the last check this way. Each check then puts it where they
+  are, and a longer ayah waits for a check or a pause as before. Some
+  reciters run short ayahs together with hardly a gap (Alafasy in At-Takwir:
+  0.15 s, shorter than some gaps between words), so there's no pause to go on.
 - **Searching** checks every second: before the reciter is found, and while
   what it heard could be more than one place.
 
@@ -807,8 +865,16 @@ how soon the reciter should finish the ayah on screen:
   reciter going on to the next copy of a refrain is far more likely than one
   skipping twenty ayahs. Without this, a misheard word once took Ar-Rahman
   from 55:13 to the refrain at 55:34.
-- **No match.** Nothing moves. After 12 seconds without placing the reciter,
-  the verses dim. After 60 seconds (**give up after**), it stops.
+- **The Basmala on its own.** It matches the start of nearly every surah, so
+  it places nothing. But it's the reciter starting a surah, so it isn't a
+  miss, and when they turn up in the next surah, it's read from its first
+  ayah (see [Hearing the translation](#hearing-the-translation-read-aloud)).
+- **Another surah, while reading aloud.** The reading finishes the last
+  surah if the reciter did, and reads the new one from the top if they
+  started it there; see [Hearing the translation](#hearing-the-translation-read-aloud).
+- **No match.** Nothing moves. Once a check has come back without placing the
+  reciter, and 12 seconds have gone by since one did, the verses dim. After
+  60 seconds (**give up after**), it stops.
 
 Each check sends the last word heard as `near`, so `locate()` prefers the
 passage that carries on from it.
@@ -875,6 +941,54 @@ copies, and 69% in An-Naba.
 In the browser, with a recitation as a fake microphone, it found Ar-Rahman
 7.8 s after the button was pressed. It then followed it through 55:3 to 55:23,
 refrains included, in order. Ya-Sin went from 36:4 to 36:23 the same way.
+
+### Short ayahs
+
+At-Takwir's ayahs are three or four words, over in about 3 seconds. Replayed
+the same way (by Alafasy and by Husary, with Al-Mulk 1–10 for comparison),
+checking at pauses alone, against also moving on at pauses and by pace through
+short ayahs (as it does now). Right ayah, with the median lag in brackets:
+
+| Recitation | 0.8 s checks: before | now | 2 s checks: before | now |
+| ---------- | ------------------- | --- | ------------------ | --- |
+| At-Takwir, Alafasy | 72% (0.9 s) | 77% (0.1 s) | 43% (3.1 s) | 68% (0.1 s) |
+| At-Takwir, Husary | 97% (−0.4 s) | 94% (−0.9 s) | 80% (0.9 s) | 90% (−1.0 s) |
+| Al-Mulk 1–10, Alafasy | 98% (−0.2 s) | 98% (−0.2 s) | 91% (1.6 s) | 93% (1.6 s) |
+| Al-Mulk 1–10, Husary | 99% (−1.9 s) | 99% (−2.1 s) | 99% (−0.4 s) | 99% (−0.4 s) |
+
+With the check taking as long as on a phone, short ayahs gain the most, and
+the longer ones don't change. With quick checks Husary's short ayahs lose a
+little: his pauses already did the job, and going by pace sometimes moves on
+before he's done. Going by pace through every ayah, long ones too, moved on
+too early in them (Al-Mulk by Alafasy at 0.8 s: 94%, against 98%), so it's
+kept to the ones checks can't keep up with.
+
+### Shorter checks
+
+Whisper always works on 30 seconds of audio, padding a short clip with
+silence, so a shorter clip only saves the time spent writing out fewer words:
+about a third, for a fast reciter (0.55 s against 0.85 s a check on the PC).
+With each clip given its own time (2 s for 8 s of audio, 1.35 s for 5 s), and
+pink noise 15 dB below the recitation for the noisy rows:
+
+| Recitation | 8 s: right ayah | found nothing | 5 s: right ayah | found nothing |
+| ---------- | --------------- | ------------- | --------------- | ------------- |
+| At-Takwir, Alafasy | 68% | 0 of 28 checks | 76% | 1 of 30 |
+| the same, with noise | 72% | 0 of 27 | 76% | 2 of 31 |
+| At-Takwir, Husary | 90% | 0 of 51 | 89% | 5 of 53 |
+| Al-Mulk 1–10, Alafasy | 93% | 0 of 24 | 98% | 0 of 25 |
+| the same, with noise | 91% | 0 of 24 | 96% | 0 of 27 |
+
+So 5 seconds of audio a check is quicker for a fast reciter, but a slow one
+says only two or three words in it, and a check in ten found nothing. The
+default stays at 8 s, which suits both.
+
+*Can't hear the reciter* used to show whenever 12 seconds passed without a
+check placing the reciter, even with every check succeeding. On a slow
+device, or right after reading aloud, that's often enough, and a Basmala
+between two surahs counted as not hearing them. On the emulator, with checks
+taking about 7 s on a busy PC, it showed several times in two minutes of
+clean recitation. Now it waits for a check that really didn't hear them.
 
 ## Reading the translation aloud
 
@@ -1082,13 +1196,13 @@ the app.
 | Request                                    | Sends                                        | Returns |
 | ------------------------------------------ | -------------------------------------------- | ------- |
 | `POST /api/quran/warmup`                   | nothing                                      | `{ ready: true }` once the model and index are loaded |
-| `POST /api/quran/recognize?near=N&surah=S` | 16 kHz mono s16le PCM, at most 12 s; `near` (a word's place in the whole Quran) and `surah` (1–114, to look in that surah alone) are optional | `{ match: { surah, ayah, word, ayahEnd, score, ambiguous, continues } or null, transcript }` |
+| `POST /api/quran/recognize?near=N&surah=S` | 16 kHz mono s16le PCM, at most 30 s; `near` (a word's place in the whole Quran) and `surah` (1–114, to look in that surah alone) are optional | `{ match: { surah, ayah, word, start, ayahEnd, surahStart, surahAyahs, score, ambiguous, continues } or null, transcript, basmala }`. `start` is the word the match starts at, `surahStart` and `surahAyahs` where its surah starts and how many ayahs it has; `basmala` is true when there's no match because the transcript is the Basmala alone |
 | `GET /api/quran/surahs`                    |                                              | `{ surahs: [{ number, name, englishName, englishNameTranslation, revelationType, ayahs }] }`, `ayahs` being how many |
 | `GET /api/quran/surah/:n?translation=en`   | `translation`: a code from [`translations.js`](public/js/translations.js), or `none` | `{ surah: { number, name, englishName, englishNameTranslation, revelationType, basmala, verses: [{ number, text, segments, translation, firstWord, words }], translationError? } }`; `segments` are `[text, colour]` pieces (see Tajweed colours), `basmala` is the same, or `null` for Al-Fatiha and At-Tawbah, `firstWord` / `words` place each ayah in the index, and `translationError` says why the translation is missing when it couldn't be downloaded |
 | any other `GET`                            |                                              | a file from `public/` |
 
 Errors come back as `{ error }`: 400 for a `surah` that isn't 1–114, 404 for
-an unknown route or surah, 405, 413 for clips over 12 s, and 502 for anything else, such as the Quran text failing
+an unknown route or surah, 405, 413 for clips over 30 s, and 502 for anything else, such as the Quran text failing
 to download.
 
 ### http and https on one port
@@ -1561,15 +1675,20 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 
 ## Limitations
 
-- **Room noise is untested.** Testing used clean recordings fed straight in, not
-  a real microphone in a noisy room.
+- **Room noise is untested.** Testing used recordings fed straight in, some
+  with pink noise added, not a real microphone in a noisy room.
 - **It needs a few seconds of clear recitation.** The Basmala alone can't place
   you. A passage that repeats many times (like the refrain of Ar-Rahman) may
   take longer to settle.
 - **Following moves ayah by ayah**, not word by word, and it can only know
   where the reciter was at the end of the last clip. When the reciter starts
   an ayah without the previous one's end being heard, the highlight gets
-  there a couple of seconds late.
+  there a couple of seconds late. Through short ayahs it goes by their pace
+  instead, so a reciter who slows down or stops can be shown an ayah ahead
+  until the next check.
+- **Reading runs one ayah ahead when the reciter stops.** Once they finish an
+  ayah, the next is on screen and is read, so if they stop there, one more
+  ayah is read than was recited.
 - **A slow server falls further behind.** With checks taking 2 s (Home
   Assistant on 2 cores), following was on the right ayah 80% of the time instead
   of 90%, and 67% for Sudais's quick Ya-Sin.
@@ -1577,9 +1696,10 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
   checks while the voice speaks. Every ayah is still read, but the reading
   can fall behind the reciter, and it only finds out where they've got to
   between ayahs, a few seconds after the voice stops. So it can be slow to
-  notice that they've moved to another surah. Headphones with **keep listening
-  while reading** avoid that, and so does turning off **read aloud when Listen
-  finds the ayah**.
+  notice that they've moved to another surah, and whether they finished the
+  last one is worked out from the time alone, since the audio it kept has the
+  voice in it. Headphones with **keep listening while reading** avoid that,
+  and so does turning off **read aloud when Listen finds the ayah**.
 - **The word highlight** of a device's voice depends on the voice reporting its
   words. Some don't (eSpeak NG on Android, for one), and then only the ayah is
   marked. The recorded voice's highlight comes from a speech model's timings,

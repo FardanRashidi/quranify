@@ -1,6 +1,8 @@
-// Captures audio (microphone or a shared tab), keeps the last few seconds in a
+// Captures audio (microphone or a shared tab), keeps the last half minute in a
 // ring buffer, and turns them into clips the speech model understands.
-const RING_SECONDS = 12;
+// Half a minute is as much as the speech model takes at once: enough to look back,
+// when the reciter turns up in another surah, for whether they finished the last.
+const RING_SECONDS = 30;
 const TARGET_RATE = 16000; // what the speech model expects
 const MAX_GAIN = 20; // how far quiet recordings get boosted
 const SILENCE_RMS = 0.002; // ≈ -54 dBFS; quieter than this counts as silence
@@ -13,6 +15,9 @@ const PAUSE = 0.35; // s
 // 25 dB below the recitation, each 0.38 s after the sound stopped.
 const PAUSE_LEVEL = 0.3;
 const LOUDEST_MEMORY = 4; // s: the loudest lately fades over about this long
+// Silence longer than this is the reciter stopping, rather than a breath between ayahs or
+// surahs: it doesn't count towards how long they've been reciting.
+const STOP = 2.5; // s
 
 export class Listener {
   /** Called when the audio source goes away (e.g. the user stops tab sharing). */
@@ -29,6 +34,7 @@ export class Listener {
   #lastChunkAt = 0;
   #loudest = 0; // RMS, fading
   #quiet = Infinity; // seconds since the last sound: none yet, so no pause to report
+  #reciting = 0; // seconds of reciting heard since it started: sound, and the pauses in it shorter than STOP
 
   get active() {
     return this.#ctx !== null;
@@ -36,6 +42,15 @@ export class Listener {
 
   get bufferedSeconds() {
     return this.#ctx ? Math.min(this.#written, this.#ring.length) / this.#ctx.sampleRate : 0;
+  }
+
+  /**
+   * Seconds of reciting heard since it started: sound and the pauses within it, but not
+   * a stop (silence of STOP or more). The difference between two, times the reciter's
+   * pace, is about how many words they said in between.
+   */
+  get recitingSeconds() {
+    return this.#reciting;
   }
 
   /**
@@ -80,6 +95,7 @@ export class Listener {
       this.#written = 0;
       this.#loudest = 0;
       this.#quiet = Infinity;
+      this.#reciting = 0;
       capture.port.onmessage = ({ data }) => this.#push(data);
       this.#stream = stream;
       this.#ctx = ctx;
@@ -96,17 +112,23 @@ export class Listener {
   }
 
   /**
-   * The most recent audio as 16 kHz mono s16le PCM.
-   * `audible` is how many seconds of it aren't silence; `endedAt` is the
-   * performance.now() timestamp of the clip's last sample.
+   * The most recent audio as 16 kHz mono s16le PCM, or with `endAt`, the audio up
+   * to then (as far back as it's kept). `audible` is how many seconds of it aren't
+   * silence; `endedAt` is the performance.now() timestamp of the clip's last sample,
+   * and `recitingSeconds` what `recitingSeconds` was then (only for the most recent).
+   * @param {number} maxSeconds
+   * @param {number | null} [endAt] performance.now()
    */
-  async clip(maxSeconds) {
+  async clip(maxSeconds, endAt = null) {
     const rate = this.#ctx.sampleRate;
     const ring = this.#ring;
-    const n = Math.min(this.#written, ring.length, Math.round(maxSeconds * rate));
-    const endedAt = this.#lastChunkAt;
+    const kept = Math.min(this.#written, ring.length);
+    const back = endAt === null ? 0 : Math.min(kept, Math.max(0, Math.round(((this.#lastChunkAt - endAt) / 1000) * rate)));
+    const n = Math.min(kept - back, Math.round(maxSeconds * rate));
+    const endedAt = this.#lastChunkAt - (back / rate) * 1000;
+    const recitingSeconds = endAt === null ? this.#reciting : null;
 
-    const end = this.#written % ring.length;
+    const end = (this.#written - back) % ring.length;
     const start = (end - n + ring.length) % ring.length;
     const samples = new Float32Array(n);
     if (start + n <= ring.length) {
@@ -137,7 +159,7 @@ export class Listener {
       pcm[i] = Math.max(-1, Math.min(1, resampled[i] * gain)) * 0x7fff;
     }
 
-    return { pcm: pcm.buffer, duration: n / rate, audible: audibleWindows / 10, endedAt };
+    return { pcm: pcm.buffer, duration: n / rate, audible: audibleWindows / 10, endedAt, recitingSeconds };
   }
 
   /** Current loudness in `count` log-spaced bands (60 Hz – 8 kHz), each 0..1. */
@@ -176,6 +198,8 @@ export class Listener {
     const seconds = chunk.length / this.#ctx.sampleRate;
     this.#loudest = Math.max(rms, this.#loudest * Math.exp(-seconds / LOUDEST_MEMORY));
     if (rms > SILENCE_RMS && rms >= this.#loudest * PAUSE_LEVEL) {
+      if (this.#quiet < STOP) this.#reciting += this.#quiet; // a pause, not a stop
+      this.#reciting += seconds;
       this.#quiet = 0;
       return;
     }

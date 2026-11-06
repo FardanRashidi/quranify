@@ -2,6 +2,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createQuran, downloadEdition } from '../lib/quran.js';
+export { isBasmala } from '../lib/quran.js';
 import { dataPath } from './paths.js';
 
 const CACHE_DIR = dataPath('.cache', 'quran');

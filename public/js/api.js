@@ -7,6 +7,7 @@ const API_BASE = '';
  * @param {ArrayBuffer} pcm 16 kHz mono s16le audio
  * @param {number | null | undefined} near word index of the last match, to keep following from there
  * @param {number | null | undefined} surah only look in this surah
+ * @returns {Promise<object | null>} the match from locate(), or { basmala: true } for the Basmala on its own, or null
  */
 export async function recognizeQuran(pcm, near, surah) {
   const params = new URLSearchParams();
@@ -18,7 +19,8 @@ export async function recognizeQuran(pcm, near, surah) {
     headers: { 'Content-Type': 'application/octet-stream' },
     body: pcm,
   });
-  return (await parse(res)).match;
+  const { match, basmala } = await parse(res);
+  return match ?? (basmala ? { basmala: true } : null);
 }
 
 /**
