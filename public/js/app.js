@@ -220,7 +220,7 @@ function stop() {
   clearTimeout(state.timer);
   state.busy = false;
   els.source.disabled = false;
-  for (const bar of els.meter.children) bar.style.transform = '';
+  for (const bar of els.meter.children) bar.removeAttribute('style');
   renderListenButtons();
   setStatus('idle');
 }
@@ -905,7 +905,12 @@ function frame() {
   requestAnimationFrame(frame);
 
   if (settings.get('meter')) {
-    listener.levels(METER_BARS).forEach((level, i) => (els.meter.children[i].style.transform = `scaleY(${Math.max(METER_MIN, level)})`));
+    // Each bar as tall as it's loud, and red for as much of it as is the background (style.css)
+    listener.levels(METER_BARS).forEach(({ level, noise }, i) => {
+      const bar = els.meter.children[i];
+      bar.style.transform = `scaleY(${Math.max(METER_MIN, level)})`;
+      bar.style.setProperty('--noise', noise.toFixed(2));
+    });
   }
   // Through short ayahs, on by the reciter's pace between checks
   if (state.following && follower.found && !state.unsure && !state.handover && state.surah?.verses && state.surah.number === follower.at.surah) {

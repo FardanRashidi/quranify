@@ -121,7 +121,10 @@ From the top down:
   and **Settings** ([settings](#settings)). While it listens, Listen turns
   into **Stop**: a lighter button with a round stop sign, a line under *Stop*
   saying whether it's *Listening…* or *Following*, and five bars that move
-  with what it hears. While it's still looking, a ring ripples out from it.
+  with what it hears: green for a voice, red for the background noise under
+  it. When they're mostly red, the place is too noisy to pick the reciter out,
+  and it's worth moving nearer the speaker or somewhere quieter. While it's
+  still looking, a ring ripples out from it.
 
 The server starts loading its speech model as soon as the page opens. The
 first time ever, that's a 400 MB download, which takes a minute; the status
@@ -604,8 +607,26 @@ All in [`public/js/listener.js`](public/js/listener.js) and
   silence of 2.5 seconds or more, which is the reciter stopping. Each clip
   carries the count, so the difference between two, at the reciter's pace,
   is about how many words they said in between.
-- **The meter.** The top-bar meter reads an `AnalyserNode`: 24 bands spaced
-  logarithmically from 60 Hz to 8 kHz, drawn with `▁▂▃▄▅▆▇█`.
+- **The meter.** The Listen button's meter reads an `AnalyserNode`: five bands
+  spaced logarithmically from 60 Hz to 8 kHz, each a bar as tall as the
+  loudest part of its band (−90 dB to −10 dB). `Meter` in `listener.js` also
+  tells a voice from the background. A voice has gaps, for a breath or between
+  words, and what's left in them is the room. So a band's background is the
+  quietest it has been in the last 12 s (with 8 s, a long phrase without a
+  breath looked like noise). A sound 21 dB or more above that is drawn all
+  green; one within 3 dB of it, which is what a voice only as loud as the
+  background comes to, all red; and in between, red from the middle of the bar
+  out. It can't know the background before it has heard a gap, so none of it
+  shows for the first two seconds, and it fades in over the next eight.
+  Tried on four reciters' recordings with rooms and noise simulated on top,
+  a fifth of the bars was red for a recitation on its own or in a furnished
+  living room, and they looked mostly red for one 2 s stretch in a hundred.
+  With people talking 5 dB below the recitation it was nearly half of the
+  bars, mostly red four stretches in ten, and with a TV across an echoing room
+  and the family talking, seven in ten. It shows noise, and an echo only where
+  a hall rings for seconds: a pause is long enough for a shorter echo to die
+  away, so a room that is only echoey still looks mostly green. Nor can it
+  tell the reciter from someone talking beside the phone: both are voices.
 
 ## Finding the ayah
 

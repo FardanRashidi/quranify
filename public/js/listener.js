@@ -18,6 +18,28 @@ const LOUDEST_MEMORY = 4; // s: the loudest lately fades over about this long
 // Silence longer than this is the reciter stopping, rather than a breath between ayahs or
 // surahs: it doesn't count towards how long they've been reciting.
 const STOP = 2.5; // s
+// The meter's bars: from this low a sound to this high, and from this quiet to this loud.
+const METER_FROM = 60; // Hz
+const METER_TO = 8000;
+const METER_QUIET = -90; // dB, in the loudest part of a bar's band
+const METER_LOUD = -10;
+// The background: the quietest each band has been lately. A voice stops, for a breath or
+// between words; what's still there then is the room: its noise, and its echo dying away.
+const BACKGROUND_MEMORY = 12; // s: reciters stop for breath more often than this (8 s wasn't enough: a long phrase looked like noise)
+const BACKGROUND_STEP = 1; // s: the memory is kept in steps this long
+const BACKGROUND_FOR = 0.03; // s: quiet for about this long, so a click or a dropout doesn't count
+// It can't know the background before it has heard a gap: none of it shows for the first
+// two seconds, then more of it over the next eight.
+const BACKGROUND_AFTER = 2; // s
+const BACKGROUND_OVER = 8;
+// A sound this far above the background (dB) is shown as all voice, and one this near it as all
+// background: a voice as loud as the background makes the two together 3 dB louder than it alone.
+// Tried on four reciters with rooms and noise simulated: with these, a clear recitation's bars
+// look mostly red one 2 s stretch in a hundred, and one with people talking 5 dB below it, four in ten.
+const VOICE_ABOVE = 21;
+const BACKGROUND_WITHIN = 3;
+// A bar this short (of its height) or shorter is too faint for its background to matter: it fades to none.
+const FAINT = 0.1;
 // Chrome on Android names a phone's microphones by how it routes the sound: "Speakerphone"
 // and "Headset earpiece". Left on the default, the app takes the speakerphone's, the one
 // for hearing a room, which suits a recitation playing from a speaker.
@@ -38,6 +60,7 @@ export class Listener {
   #ctx = null;
   #analyser = null;
   #freq = null;
+  #meter = null;
   #ring = null;
   #written = 0;
   #lastChunkAt = 0;
@@ -113,9 +136,8 @@ export class Listener {
       this.#analyser = ctx.createAnalyser();
       this.#analyser.fftSize = 2048;
       this.#analyser.smoothingTimeConstant = 0.6;
-      this.#analyser.minDecibels = -90;
-      this.#analyser.maxDecibels = -10;
-      this.#freq = new Uint8Array(this.#analyser.frequencyBinCount);
+      this.#freq = new Float32Array(this.#analyser.frequencyBinCount);
+      this.#meter = null; // a new one, with no memory of the last room
       input.connect(this.#analyser);
 
       this.#ring = new Float32Array(ctx.sampleRate * RING_SECONDS);
@@ -190,20 +212,16 @@ export class Listener {
     return { pcm: pcm.buffer, duration: n / rate, audible: audibleWindows / 10, endedAt, recitingSeconds };
   }
 
-  /** Current loudness in `count` log-spaced bands (60 Hz – 8 kHz), each 0..1. */
+  /**
+   * What it hears now, in `count` log-spaced bands (60 Hz – 8 kHz): each { level, noise }.
+   * `level` is how loud, 0..1, and `noise` how much of that is the background rather than
+   * a voice over it, 0..1 (see Meter).
+   */
   levels(count) {
-    if (!this.#analyser) return new Array(count).fill(0);
-    this.#analyser.getByteFrequencyData(this.#freq);
-    const hzPerBin = this.#ctx.sampleRate / this.#analyser.fftSize;
-    const levels = [];
-    for (let i = 0; i < count; i++) {
-      const lo = Math.floor((60 * (8000 / 60) ** (i / count)) / hzPerBin);
-      const hi = Math.min(Math.ceil((60 * (8000 / 60) ** ((i + 1) / count)) / hzPerBin), this.#freq.length - 1);
-      let max = 0;
-      for (let bin = lo; bin <= hi; bin++) max = Math.max(max, this.#freq[bin]);
-      levels.push(max / 255);
-    }
-    return levels;
+    if (!this.#analyser) return Array.from({ length: count }, () => ({ level: 0, noise: 0 }));
+    this.#analyser.getFloatFrequencyData(this.#freq);
+    if (this.#meter?.count !== count) this.#meter = new Meter(count);
+    return this.#meter.read(this.#freq, this.#ctx.sampleRate / this.#analyser.fftSize, performance.now());
   }
 
   #push(chunk) {
@@ -251,6 +269,73 @@ export class Listener {
     while (sounds.length && sounds[0][1] < end - RING_SECONDS * 1000) sounds.shift();
   }
 }
+
+/**
+ * Turns the analyser's readings into the meter's bars, telling a voice from the background
+ * under it. The background is the quietest each band has been in the last BACKGROUND_MEMORY
+ * seconds: a voice has gaps, and what fills them is the room. That's its noise, and its echo
+ * too, where it rings for long enough to fill the gaps. A sound VOICE_ABOVE dB over the
+ * background is all voice; nearer it than that, part of the bar is the background's.
+ */
+export class Meter {
+  #bands;
+  #at = null; // when it last read (ms)
+  #heard = 0; // seconds of readings since the sound began
+
+  constructor(count) {
+    this.count = count;
+    // smooth: the band's loudness (dB) over the last BACKGROUND_FOR; quietest: its least in this step, and in each step before
+    this.#bands = Array.from({ length: count }, () => ({ smooth: null, quietest: Infinity, before: [], since: 0 }));
+  }
+
+  /**
+   * @param {Float32Array} db the analyser's getFloatFrequencyData(): dB in each frequency bin
+   * @param {number} hzPerBin
+   * @param {number} now ms
+   * @returns {{ level: number, noise: number }[]} for each bar, how tall (0..1), and how much of it is background (0..1)
+   */
+  read(db, hzPerBin, now) {
+    const count = this.count;
+    const seconds = this.#at === null ? 0 : Math.min(1, Math.max(0, (now - this.#at) / 1000));
+    this.#at = now;
+    let sound = false;
+    const heard = this.#bands.map((band, i) => {
+      const lo = Math.floor((METER_FROM * (METER_TO / METER_FROM) ** (i / count)) / hzPerBin);
+      const hi = Math.min(Math.ceil((METER_FROM * (METER_TO / METER_FROM) ** ((i + 1) / count)) / hzPerBin), db.length - 1);
+      let max = -Infinity;
+      let power = 0;
+      for (let bin = lo; bin <= hi; bin++) {
+        max = Math.max(max, db[bin]);
+        power += 10 ** (db[bin] / 10);
+      }
+      if (power > 0) sound = true;
+      return { max, loudness: Math.max(-140, 10 * Math.log10(power)) };
+    });
+    // Before the first sound arrives (and while a shared tab plays nothing) there's no room to measure
+    if (!sound) return heard.map(() => ({ level: 0, noise: 0 }));
+    this.#heard += seconds;
+
+    return heard.map(({ max, loudness }, i) => {
+      const band = this.#bands[i];
+      band.smooth = band.smooth === null ? loudness : band.smooth + (loudness - band.smooth) * (1 - Math.exp(-seconds / BACKGROUND_FOR));
+      band.quietest = Math.min(band.quietest, band.smooth);
+      band.since += seconds;
+      const background = Math.min(band.quietest, ...band.before);
+      if (band.since >= BACKGROUND_STEP) {
+        band.before.push(band.quietest);
+        if (band.before.length >= BACKGROUND_MEMORY / BACKGROUND_STEP) band.before.shift();
+        band.quietest = band.smooth;
+        band.since = 0;
+      }
+      const level = clamp((max - METER_QUIET) / (METER_LOUD - METER_QUIET));
+      // Not before it has heard a gap, nor for a bar too faint to see
+      const known = clamp((this.#heard - BACKGROUND_AFTER) / BACKGROUND_OVER) * clamp(level / FAINT);
+      return { level, noise: known * clamp((VOICE_ABOVE - (loudness - background)) / (VOICE_ABOVE - BACKGROUND_WITHIN)) };
+    });
+  }
+}
+
+const clamp = (x) => Math.max(0, Math.min(1, x));
 
 /** The deviceId of the PREFERRED_MICROPHONE, if there's one (and it has its name yet). */
 async function preferredMicrophone() {

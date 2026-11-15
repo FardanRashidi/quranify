@@ -203,7 +203,7 @@ const SECTIONS = [
     rows: [
       { key: 'theme', label: 'Theme', type: 'choice', options: [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']], hint: 'Auto follows the device' },
       { key: 'accent', label: 'Accent colour', type: 'colour', themeVar: '--theme-accent' },
-      { key: 'meter', label: 'Level meter', type: 'toggle', hint: 'On the Listen button, while it listens' },
+      { key: 'meter', label: 'Level meter', type: 'toggle', hint: 'On the Listen button: green for the voice, red for background noise' },
       { key: 'animations', label: 'Animations', type: 'toggle', hint: 'Pulsing dot, smooth scrolling' },
     ],
   },

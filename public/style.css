@@ -23,6 +23,9 @@
   --theme-tj-ghunnah: #4fd68a;
   --theme-tj-ra: #c592ff;
   --theme-tj-waqf: #f2b84b;
+  /* The meter on the Listen button: a voice, and the background under it */
+  --meter-voice: #4fd68a;
+  --meter-noise: #ff6b6b;
   color-scheme: dark;
 
   --accent: var(--theme-accent);
@@ -57,6 +60,8 @@
   --theme-tj-ghunnah: #188a3e;
   --theme-tj-ra: #7b3fc4;
   --theme-tj-waqf: #b8650b;
+  --meter-voice: #188a3e;
+  --meter-noise: #d32f2f;
   color-scheme: light;
 }
 
@@ -618,7 +623,9 @@ body:not(.tajweed) .tajweed-key,
   }
 }
 
-/* A bar for each part of what it hears, as tall as it's loud */
+/* A bar for each part of what it hears, as tall as it's loud: green for a voice, and red
+   from its middle out for as much of it as is the background (--noise, 0 to 1, from app.js).
+   Mostly red is a place too noisy to pick the reciter out. */
 .meter {
   display: flex;
   align-items: center;
@@ -627,10 +634,15 @@ body:not(.tajweed) .tajweed-key,
 }
 
 .meter i {
+  --noise: 0;
   width: 4px;
   height: 100%;
   border-radius: 2px;
-  background: var(--accent);
+  background: linear-gradient(
+    var(--meter-voice) calc(50% - var(--noise) * 50%),
+    var(--meter-noise) 0 calc(50% + var(--noise) * 50%),
+    var(--meter-voice) 0
+  );
   transform: scaleY(0.15);
   transition: transform 80ms linear;
 }
