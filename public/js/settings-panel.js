@@ -81,22 +81,87 @@ const recordedVoice = () => translatedTo('en') && recording.supported && setting
 /**
  * Each section's rows. `when` hides a row (or leaves out a section) that doesn't
  * apply here, and `enabledWhen` greys out one that does nothing with the current
- * settings. `about` is a line under the section's title, and a `collapsed` section
- * stays folded away until it's opened.
+ * settings. `about` is a line under the section's title, saying what's in it. Each
+ * section is folded away until it's opened (and stays open for next time), but for an
+ * `open` one, which always is.
  */
 const SECTIONS = [
   {
-    title: 'Text',
+    title: 'Listening',
+    about: 'What Listen does, and what it listens to',
+    rows: [
+      {
+        key: 'listenFollow',
+        label: 'Follow the reciter',
+        type: 'toggle',
+        hint: 'Once it finds the ayah, keep listening and move along with them. Off: stop listening once it’s found',
+      },
+      {
+        key: 'listenRead',
+        label: 'Read aloud when Listen finds the ayah',
+        type: 'toggle',
+        hint: 'Along with the reciter when following, otherwise on through the surah',
+        when: () => canReadAloud,
+        enabledWhen: readable,
+      },
+      { key: 'followScroll', label: 'Scroll along', type: 'toggle', hint: 'To each ayah as following or reading aloud reaches it' },
+      {
+        key: 'giveUpAfter',
+        label: 'Give up after',
+        type: 'range',
+        values: GIVE_UP,
+        format: duration,
+        hint: 'Of not hearing the ayah. Longer suits following a whole prayer, with its pauses',
+      },
+      {
+        key: 'source',
+        label: 'Audio source',
+        type: 'choice',
+        options: [['mic', 'Microphone'], ['tab', 'Tab / system']],
+        hint: NEXT_LISTEN,
+        when: () => Boolean(navigator.mediaDevices?.getDisplayMedia),
+      },
+      { key: 'microphone', label: 'Microphone', type: 'microphone', hint: NEXT_LISTEN },
+    ],
+  },
+  {
+    title: 'At the masjid',
+    about: 'Following a prayer, a big echoing room, and how noisy it is',
+    rows: [
+      {
+        key: 'prayerMode',
+        label: 'Prayer mode',
+        type: 'toggle',
+        hint: 'Listening to a prayer: it starts on Al-Fatiha, then finds the surah after it, and when the imam goes quiet (rukuʿ and sujud) it gets ready for the next rakaah’s Fatiha',
+      },
+      {
+        key: 'masjidMode',
+        label: 'Masjid mode',
+        type: 'toggle',
+        hint: 'For a big room with a speaker: searches hear up to 16 s instead of 8, and it keeps trying for 10 minutes. A little quicker in an echoing room; it can’t undo a strong echo',
+      },
+      {
+        key: 'listenWhileReading',
+        label: 'Keep listening while reading',
+        type: 'toggle',
+        hint: 'With earphones in, so the voice doesn’t go out through the speaker: following keeps up much better. Without, checks wait while it reads, so the microphone doesn’t hear the voice',
+        when: () => canReadAloud,
+        enabledWhen: readable,
+      },
+      {
+        type: 'soundCheck',
+        label: 'Voice over background',
+        hint: `How far the voice is above the background noise, while it listens. ${CLEAR} dB or more is clear; under ${NOISY}, too noisy to pick the reciter out. It can’t measure an echo`,
+      },
+    ],
+  },
+  {
+    title: 'Text and translation',
+    about: 'How big the text is, and the translation under each ayah',
     rows: [
       { key: 'textSize', label: 'Text size', type: 'choice', options: settings.TEXT_SIZES, hint: 'For everything: the verses, buttons and menus' },
       { type: 'preview' },
       { key: 'arabicSize', label: 'Arabic size', type: 'range', min: 70, max: 200, step: 5, format: percent },
-    ],
-  },
-  {
-    title: 'Translation and voice',
-    about: 'The translation under each ayah, and reading it aloud',
-    rows: [
       {
         key: 'translation',
         label: 'Translation',
@@ -114,6 +179,12 @@ const SECTIONS = [
         format: percent,
         enabledWhen: () => !translatedTo('none'),
       },
+    ],
+  },
+  {
+    title: 'Reading aloud',
+    about: 'The voice that reads the translation, and how fast',
+    rows: [
       // For the translation shown
       {
         label: 'Voice',
@@ -153,14 +224,6 @@ const SECTIONS = [
         enabledWhen: readable,
       },
       {
-        key: 'listenRead',
-        label: 'Read aloud when Listen finds the ayah',
-        type: 'toggle',
-        hint: 'Along with the reciter when following, otherwise on through the surah',
-        when: () => canReadAloud,
-        enabledWhen: readable,
-      },
-      {
         key: 'readEveryAyah',
         label: 'Read every ayah',
         type: 'toggle',
@@ -168,54 +231,12 @@ const SECTIONS = [
         when: () => canReadAloud,
         enabledWhen: readable,
       },
-      {
-        key: 'listenWhileReading',
-        label: 'Keep listening while reading',
-        type: 'toggle',
-        hint: 'For headphones. Otherwise checks wait while it reads, so the microphone doesn’t hear the voice',
-        when: () => canReadAloud,
-        enabledWhen: readable,
-      },
       { type: 'note', text: 'This browser can’t read aloud', when: () => !canReadAloud },
     ],
   },
   {
-    title: 'Listening',
-    about: 'What Listen does once it’s found the ayah, and how long it keeps trying',
-    rows: [
-      {
-        key: 'listenFollow',
-        label: 'Follow the reciter',
-        type: 'toggle',
-        hint: 'Once it finds the ayah, keep listening and move along with them. Off: stop listening once it’s found',
-      },
-      { key: 'followScroll', label: 'Scroll along', type: 'toggle', hint: 'To each ayah as following or reading aloud reaches it' },
-      {
-        key: 'giveUpAfter',
-        label: 'Give up after',
-        type: 'range',
-        values: GIVE_UP,
-        format: duration,
-        hint: 'Of not hearing the ayah. Longer suits following a whole prayer, with its pauses',
-      },
-      {
-        key: 'source',
-        label: 'Audio source',
-        type: 'choice',
-        options: [['mic', 'Microphone'], ['tab', 'Tab / system']],
-        hint: NEXT_LISTEN,
-        when: () => Boolean(navigator.mediaDevices?.getDisplayMedia),
-      },
-      { key: 'microphone', label: 'Microphone', type: 'microphone', hint: NEXT_LISTEN },
-      {
-        type: 'soundCheck',
-        label: 'Voice over background',
-        hint: `How far the voice is above the background noise, while it listens. ${CLEAR} dB or more is clear; under ${NOISY}, too noisy to pick the reciter out. It can’t measure an echo`,
-      },
-    ],
-  },
-  {
     title: 'Appearance',
+    about: 'Theme, colours and the level meter',
     rows: [
       { key: 'theme', label: 'Theme', type: 'choice', options: [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']], hint: 'Auto follows the device' },
       { key: 'accent', label: 'Accent colour', type: 'colour', themeVar: '--theme-accent' },
@@ -225,6 +246,7 @@ const SECTIONS = [
   },
   {
     title: 'Tajweed',
+    about: 'The colours in the Arabic, and their key',
     rows: [
       { key: 'tajweed', label: 'Tajweed colours', type: 'toggle' },
       { key: 'tajweedKey', label: 'Key above each surah', type: 'toggle', enabledWhen: tajweedOn },
@@ -237,6 +259,7 @@ const SECTIONS = [
   },
   {
     title: 'Auto search',
+    about: 'Listening in the background, with notifications',
     when: () => autoSearch.supported,
     rows: [
       { type: 'autoSearch', label: 'Listen in the background', hint: 'With the screen off too, and send a notification for each surah it hears' },
@@ -246,8 +269,7 @@ const SECTIONS = [
   },
   {
     title: 'Advanced',
-    about: 'How often it checks while following, and how much it hears each time. The defaults suit most recitations',
-    collapsed: true,
+    about: 'How often it checks, and how much it hears each time',
     rows: [
       {
         key: 'followMin',
@@ -265,12 +287,12 @@ const SECTIONS = [
   },
   {
     title: 'Developer',
-    about: 'The sound since Listen was last pressed: how loud it got, and the background under it',
-    collapsed: true,
+    about: 'A graph of the sound since Listen was last pressed: how loud it got, and the background under it',
     rows: [{ type: 'soundGraph' }],
   },
   {
     title: 'About',
+    open: true,
     rows: [
       { type: 'tutorial', label: 'Tutorial', hint: 'A quick tour of the buttons' },
       { type: 'link', label: 'Made by FardanRashidi', hint: 'On GitHub', href: GITHUB, text: 'GitHub ↗' },
@@ -315,17 +337,32 @@ export class SettingsPanel {
   constructor(dialog) {
     this.#dialog = dialog;
     const body = dialog.querySelector('.settings-body');
-    for (const { title, about, rows, when, collapsed } of SECTIONS) {
+    const opened = openSections();
+    for (const { title, about, rows, when, open } of SECTIONS) {
       if (when && !when()) continue;
       const heading = Object.assign(document.createElement('h3'), { textContent: title });
-      // Folded away: a <details>, with the heading as what opens it
-      const section = document.createElement(collapsed ? 'details' : 'section');
-      if (collapsed) {
+      const blurb = about ? Object.assign(document.createElement('p'), { className: 'about', textContent: about }) : null;
+      let section;
+      if (open) {
+        section = document.createElement('section');
+        section.append(heading);
+        if (blurb) section.append(blurb);
+      } else {
+        // Folded away: a <details>, with the title and what's in it as what opens it
+        section = Object.assign(document.createElement('details'), { className: 'category', open: opened.has(title) });
         const summary = document.createElement('summary');
-        summary.append(heading);
+        const text = document.createElement('span');
+        text.append(heading);
+        if (blurb) text.append(blurb);
+        summary.append(text);
         section.append(summary);
-      } else section.append(heading);
-      if (about) section.append(Object.assign(document.createElement('p'), { className: 'about', textContent: about }));
+        section.addEventListener('toggle', () => {
+          if (section.open) opened.add(title);
+          else opened.delete(title);
+          saveOpenSections(opened);
+          if (section.open) this.refresh(); // the graph draws once it has room
+        });
+      }
       for (const spec of rows) {
         const built = build(spec);
         this.#rows.push({ ...built, spec });
@@ -798,6 +835,21 @@ async function listVoices(entry) {
   if (language === 'en' && recording.supported) options.unshift(new Option('Ibrahim Walk (recorded)', RECORDED));
   select.replaceChildren(...options);
   entry.update();
+}
+
+// Which sections were left open, for next time (in this browser only)
+const OPEN_KEY = 'settingsOpen';
+function openSections() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(OPEN_KEY)) ?? []);
+  } catch {
+    return new Set();
+  }
+}
+function saveOpenSections(open) {
+  try {
+    localStorage.setItem(OPEN_KEY, JSON.stringify([...open]));
+  } catch {}
 }
 
 // Which version this is, at the very bottom, to tell builds apart: version.json

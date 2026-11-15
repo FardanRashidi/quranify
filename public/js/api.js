@@ -7,12 +7,14 @@ const API_BASE = '';
  * @param {ArrayBuffer} pcm 16 kHz mono s16le audio
  * @param {number | null | undefined} near word index of the last match, to keep following from there
  * @param {number | null | undefined} surah only look in this surah
+ * @param {{ fatiha?: boolean }} [options] Al-Fatiha is expected: see lib/quran.js's locate
  * @returns {Promise<object | null>} the match from locate(), or { basmala: true } for the Basmala on its own, or null
  */
-export async function recognizeQuran(pcm, near, surah) {
+export async function recognizeQuran(pcm, near, surah, { fatiha = false } = {}) {
   const params = new URLSearchParams();
   if (near != null) params.set('near', near);
   if (surah != null) params.set('surah', surah);
+  if (fatiha) params.set('fatiha', '1');
   const query = params.size ? `?${params}` : '';
   const res = await fetch(`${API_BASE}/api/quran/recognize${query}`, {
     method: 'POST',

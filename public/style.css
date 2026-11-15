@@ -734,41 +734,68 @@ body:not(.tajweed) .tajweed-key,
   line-height: 1.4;
 }
 
-/* A section folded away (Advanced): its title opens it */
-.settings details > summary {
+/* A category of settings: a card that its title (and the line saying what's in it) opens */
+.settings details.category {
+  margin-top: 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.settings details.category:first-child {
+  margin-top: 1rem;
+}
+
+.settings details.category > summary {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 2.75rem;
-  margin-top: 1rem;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 12px;
   cursor: pointer;
   list-style: none;
 }
 
-.settings details > summary::-webkit-details-marker {
+.settings details.category > summary::-webkit-details-marker {
   display: none;
 }
 
-.settings details > summary h3 {
+.settings details.category > summary h3 {
   margin: 0;
 }
 
-.settings details > summary::after {
+.settings details.category > summary .about {
+  margin: 0.125rem 0 0;
+}
+
+.settings details.category > summary::after {
   content: '▸';
+  flex: none;
   color: var(--accent);
   transition: transform 0.2s;
 }
 
-.settings details[open] > summary::after {
+.settings details.category[open] > summary::after {
   transform: rotate(90deg);
 }
 
-.settings details > summary:focus-visible {
+.settings details.category > summary:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* Which version this is, under everything */
+/* Its rows, inside the card */
+.settings details.category > :not(summary) {
+  margin-right: 0.875rem;
+  margin-left: 0.875rem;
+}
+
+.settings details.category > :last-child {
+  border-bottom: none;
+}
+
 .settings .version {
   margin: 1rem 0 0;
   color: var(--dim);

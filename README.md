@@ -188,6 +188,58 @@ In a browser test with Ya-Sin playing into a fake microphone, one press of
 Listen found 36:4 after 11 s and started reading its translation straight
 away. It then followed the reciter on to 36:8, and read 36:7 as they reached it.
 
+### At the masjid
+
+For a recitation through a masjid's speakers, or a prayer on TV:
+
+- **Too noisy.** While it hasn't placed the reciter, if the voice has been
+  less than 15 dB above the background on average over the last 5 seconds
+  (and it's been listening for 8), the status line adds *Too noisy here: move
+  nearer the speaker*. On recordings with noise simulated, that was 4% of the
+  time for a recitation on its own, and about half of it with people talking
+  5 dB below the reciter, or a TV with the family talking. It can't tell an
+  echo from the voice, so in an echoing hall it may not say so: there,
+  nearer the speaker is what helps.
+- **Masjid mode** (under **at the masjid**): while it's still looking, each
+  check hears up to 16 s instead of 8, and it keeps trying for 10 minutes. In
+  a simulated living room that found the ayah within 15 s 96% of the time
+  instead of 88%, and from a TV across an echoing room 85% instead of 81%. It
+  doesn't help in a hall that rings for seconds.
+- **Prayer mode** (under **at the masjid**): each rakaah starts with Al-Fatiha,
+  so Listen opens it at its first ayah straight away and looks for it first
+  (any surah can still be found). Usually Al-Fatiha's first three ayahs aren't
+  trusted, because the speech model tends to go on with them after any
+  Basmala; expecting Al-Fatiha, they are, so it's placed from *Al-hamdu
+  lillah*. When it hears the Basmala first, its translation starts then.
+  Once Al-Fatiha's last ayah is done, the status says *Al-Fatiha done ·
+  listening for the surah after it*, and it looks through the whole Quran,
+  only at what came after Al-Fatiha, and without showing a guess until it's
+  sure. Al-Fatiha's translation is finished before the surah's starts. When
+  the imam goes quiet for 20 s after the surah (at most 4 s of sound: the
+  takbirs), that's rukuʿ and sujud: it goes back to Al-Fatiha, ready for the
+  next rakaah. It doesn't give up for 15 minutes.
+- **Earphones.** Reading the translation through the phone's speaker, it can't
+  listen at the same time, so it falls behind the imam. With earphones, turn
+  on **keep listening while reading**.
+
+A two-rakaah prayer by Sudais (Al-Fatiha and Al-Kafirun, 25 s of quiet,
+Al-Fatiha and Al-Ikhlas, 2 s for *Amin* after each Fatiha) was played to the
+app on the emulator as its microphone, with prayer mode and keep listening
+while reading on, clean and with a living room's echo simulated:
+
+| | Clean | Living room |
+| --- | --- | --- |
+| Al-Fatiha placed (it starts at 0 s; ayah 3 at 7.4 s) | 10.1 s, at ayah 3 | 11.3 s, at ayah 2 |
+| Al-Kafirun found (it starts at 36.4 s) | 46.8 s, at ayah 3 | 48.7 s, at ayah 3 |
+| Back to Al-Fatiha after the surah (quiet from 62.7 s) | 89.2 s | 87.7 s |
+| Al-Fatiha placed again (it starts at 87.7 s) | 98.8 s, at ayah 3 | 99.0 s, at ayah 3 |
+| Al-Ikhlas found (it starts at 124.1 s) | 129.5 s, at ayah 2 | 132.5 s, at ayah 3 |
+
+Before Al-Fatiha's opening was trusted, it was placed at 16 s, and in the
+second rakaah with the echo at 122 s. Through the speaker instead of
+earphones, it sat on Al-Fatiha's fifth ayah for 30 s while reading, and found
+Al-Kafirun at its third ayah with the imam on its fifth.
+
 ### Choosing a surah
 
 **Surahs**, at the bottom left, lists all 114 surahs: number, name, meaning,
@@ -513,16 +565,21 @@ change. Changes take effect straight away and are saved in the browser, or in
 the app. Close it with × at the top or **Close** at the bottom, Esc, Back, or
 a tap outside it.
 
-| Section               | Settings |
+Its settings are in categories, each folded away under its title and a line
+saying what's in it; tap one to open it. The ones left open stay open the next
+time (in this browser or app, under `settingsOpen`). **About** is always open.
+
+| Category              | Settings |
 | --------------------- | -------- |
-| text                  | text size (Normal, Large or Largest, for everything); Arabic size on top of that. A sample ayah (51:21) shows the result as you go. |
-| translation and voice | everything about the translation and hearing it: the translation (any of 46 languages, or none) and its size; the voice for it (English: **Ibrahim Walk (recorded)**, or any of the device's English voices; other languages: the device's voices for them), with a **Try** button to hear it, kept for each language, or a note when the device has none; in the app, **save the voice for offline** (see [Saving it for offline](#saving-it-for-offline)); reading speed (1×, from 0.5× to 2×); read aloud when Listen finds the ayah (on); read every ayah while following (on); keep listening while reading (off). The reading rows grey out with no translation or no voice. |
-| listening             | follow the reciter once it's found (on); scroll along to each ayah (on); how long it listens without placing the reciter before giving up (1 min, from 20 s to 10 min); audio source; which microphone (when there's more than one: on a phone, the default is the speakerphone's, for hearing a room); **voice over background**, a reading of how many dB the voice is above the background noise while it listens (20 or more is clear, under 14 too noisy; see [the meter](#audio-capture)) |
+| listening             | follow the reciter once it's found (on); read aloud when Listen finds the ayah (on); scroll along to each ayah (on); how long it listens without placing the reciter before giving up (1 min, from 20 s to 10 min); audio source; which microphone (when there's more than one: on a phone, the default is the speakerphone's, for hearing a room) |
+| at the masjid         | **prayer mode** and **masjid mode** (both off; see [At the masjid](#at-the-masjid)); keep listening while reading (off: turn it on with earphones in); **voice over background**, a reading of how many dB the voice is above the background noise while it listens (20 or more is clear, under 14 too noisy; see [the meter](#audio-capture)) |
+| text and translation  | text size (Normal, Large or Largest, for everything); Arabic size on top of that, with a sample ayah (51:21) to show the result; the translation (any of 46 languages, or none) and its size |
+| reading aloud         | the voice for the translation (English: **Ibrahim Walk (recorded)**, or any of the device's English voices; other languages: the device's voices for them), with a **Try** button to hear it, kept for each language, or a note when the device has none; in the app, **save the voice for offline** (see [Saving it for offline](#saving-it-for-offline)); reading speed (1×, from 0.5× to 2×); read every ayah while following (on). They grey out with no translation or no voice. |
 | appearance            | theme (dark, light, or auto to follow the device), accent colour, level meter (on the Listen button), animations |
 | tajweed               | tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour |
 | auto search           | Android app only: listening in the background, on or off; **Add** the Quick Settings tile (Android 13 and later); **Show** the history. See [Auto search](#auto-search). |
-| advanced              | folded away until it's opened: the shortest wait between checks while following (2 s, from 1 to 5) and the longest (5 s, from 2 to 15); how much audio each check hears (8 s, from 5 to 12: less is a little quicker, but hears fewer words of a slow reciter; see [Shorter checks](#shorter-checks)) |
-| developer             | folded away until it's opened: a graph of the sound since Listen was last pressed, with one line for how loud it got (the voice) and one for the background under it, and the usual gap between them |
+| advanced              | the shortest wait between checks while following (2 s, from 1 to 5) and the longest (5 s, from 2 to 15); how much audio each check hears (8 s, from 5 to 12: less is a little quicker, but hears fewer words of a slow reciter; see [Shorter checks](#shorter-checks)) |
+| developer             | a graph of the sound since Listen was last pressed, with one line for how loud it got (the voice) and one for the background under it, and the usual gap between them. The gaps in the lines are the app reading aloud, when it doesn't measure. |
 | about                 | the [tutorial](#the-tutorial); a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, the translation shown, the recorded voice and the speech model |
 
 The very bottom says which version it is, and which git commit it was built
@@ -1297,7 +1354,7 @@ the app.
 | Request                                    | Sends                                        | Returns |
 | ------------------------------------------ | -------------------------------------------- | ------- |
 | `POST /api/quran/warmup`                   | nothing                                      | `{ ready: true }` once the model and index are loaded |
-| `POST /api/quran/recognize?near=N&surah=S` | 16 kHz mono s16le PCM, at most 30 s; `near` (a word's place in the whole Quran) and `surah` (1–114, to look in that surah alone) are optional | `{ match: { surah, ayah, word, start, ayahEnd, surahStart, surahAyahs, score, ambiguous, continues } or null, transcript, basmala }`. `start` is the word the match starts at, `surahStart` and `surahAyahs` where its surah starts and how many ayahs it has; `basmala` is true when there's no match because the transcript is the Basmala alone |
+| `POST /api/quran/recognize?near=N&surah=S&fatiha=1` | 16 kHz mono s16le PCM, at most 30 s; `near` (a word's place in the whole Quran), `surah` (1–114, to look in that surah alone) and `fatiha` (Al-Fatiha is expected, so its first ayahs are trusted: prayer mode) are optional | `{ match: { surah, ayah, word, start, ayahEnd, surahStart, surahAyahs, score, ambiguous, continues } or null, transcript, basmala }`. `start` is the word the match starts at, `surahStart` and `surahAyahs` where its surah starts and how many ayahs it has; `basmala` is true when there's no match because the transcript is the Basmala alone |
 | `GET /api/quran/surahs`                    |                                              | `{ surahs: [{ number, name, englishName, englishNameTranslation, revelationType, ayahs }] }`, `ayahs` being how many |
 | `GET /api/quran/surah/:n?translation=en`   | `translation`: a code from [`translations.js`](public/js/translations.js), or `none` | `{ surah: { number, name, englishName, englishNameTranslation, revelationType, basmala, verses: [{ number, text, segments, translation, firstWord, words }], translationError? } }`; `segments` are `[text, colour]` pieces (see Tajweed colours), `basmala` is the same, or `null` for Al-Fatiha and At-Tawbah, `firstWord` / `words` place each ayah in the index, and `translationError` says why the translation is missing when it couldn't be downloaded |
 | any other `GET`                            |                                              | a file from `public/` |
