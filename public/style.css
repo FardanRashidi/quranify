@@ -804,6 +804,70 @@ body:not(.tajweed) .tajweed-key,
   line-height: 1.4;
 }
 
+/* The voice-over-background reading: the number, and under it what it means */
+.settings .sound-check {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.75rem;
+}
+
+.settings .sound-check strong {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings .row .sound-check small {
+  margin: 0;
+}
+
+.settings .sound-check[data-verdict='clear'] strong {
+  color: var(--meter-voice);
+}
+
+.settings .sound-check[data-verdict='noisy'] strong {
+  color: var(--meter-noise);
+}
+
+/* The developer's graph of the sound: its two lines are the meter's colours */
+.settings .sound-graph {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings .sound-graph canvas {
+  display: block;
+  width: 100%;
+  height: 11rem;
+}
+
+.settings .sound-graph p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 0;
+  color: var(--dim);
+  font-size: 0.8125rem;
+}
+
+.settings .sound-graph p i {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.1875rem;
+  margin-right: 0.375rem;
+  border-radius: 1px;
+  vertical-align: middle;
+}
+
+.settings .sound-graph p i.voice {
+  background: var(--meter-voice);
+}
+
+.settings .sound-graph p i.noise {
+  background: var(--meter-noise);
+}
+
 .settings .row[inert] {
   opacity: 0.4;
 }

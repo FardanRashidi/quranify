@@ -48,7 +48,6 @@ const CATCH_UP = 0.1;
 const MAX_CATCH_UP = 1.5;
 const MAX_BEHIND = 10;
 const NAME = 'Quran Whisperer';
-const METER_BARS = 5;
 const METER_MIN = 0.15; // of a bar's height, so it shows when it's quiet
 // The key above each surah, in Malay when the translation is Malay. Each waqf
 // sign is written out in full-size letters (it's a miniature of them), since a
@@ -906,7 +905,7 @@ function frame() {
 
   if (settings.get('meter')) {
     // Each bar as tall as it's loud, and red for as much of it as is the background (style.css)
-    listener.levels(METER_BARS).forEach(({ level, noise }, i) => {
+    listener.levels().forEach(({ level, noise }, i) => {
       const bar = els.meter.children[i];
       bar.style.transform = `scaleY(${Math.max(METER_MIN, level)})`;
       bar.style.setProperty('--noise', noise.toFixed(2));
@@ -1103,6 +1102,17 @@ els.openSettings.addEventListener('click', () => settingsPanel.show());
 els.openSurahs.addEventListener('click', () => surahPicker.show(state.surah?.number ?? null));
 surahPicker.onPick = pickSurah;
 settingsPanel.onTutorial = () => tutorial.show();
+settingsPanel.sound = {
+  get active() {
+    return listener.active;
+  },
+  get sound() {
+    return listener.sound;
+  },
+  get log() {
+    return listener.soundLog;
+  },
+};
 settingsPanel.onHistory = () => surahPicker.show(state.surah?.number ?? null, 'heard');
 els.scope.addEventListener('click', () => {
   if (!state.surah) return;
@@ -1148,7 +1158,7 @@ if (!canCaptureTab) {
   els.source.hidden = true;
 }
 if (settings.get('translation') !== 'none' && !translation(settings.get('translation'))) settings.set('translation', 'en'); // one we no longer offer
-els.meter.append(...Array.from({ length: METER_BARS }, () => document.createElement('i')));
+els.meter.append(...listener.levels().map(() => document.createElement('i')));
 for (const key of Object.keys(settings.DEFAULTS)) applySetting(key);
 renderListenButtons();
 reset();

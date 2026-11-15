@@ -57,6 +57,17 @@ const seconds = (value) => `${value} s`;
 const duration = (value) => (value < 60 ? `${value} s` : `${Math.floor(value / 60)} min${value % 60 ? ` ${value % 60} s` : ''}`);
 // Give up after: closer together where a few seconds matter, up to 10 minutes (a whole prayer, pauses and all)
 const GIVE_UP = [20, 30, 45, 60, 90, 120, 180, 240, 300, 420, 600];
+// The voice-over-background reading: this many dB apart or more is clear, and under this, too
+// noisy. On four reciters' recordings with noise simulated on top, a recitation on its own
+// usually read 23 dB, with people talking 10 dB below it 16, and 5 dB below it (where a check
+// finds the ayah half as often) 14. More than the most is shown as that: a silent background.
+const CLEAR = 20;
+const NOISY = 14;
+const MOST_APART = 40;
+const SOUND_EVERY = 500; // ms between readings while the panel is open
+const GRAPH_SECONDS = 60; // the graph is at least this wide
+const GRAPH_FLOOR = -100; // dB: and goes no lower
+const GRAPH_GAP = 2; // s: readings further apart than this aren't joined
 const NEXT_LISTEN = 'Takes effect the next time you press Listen';
 const tajweedOn = () => settings.get('tajweed');
 const translatedTo = (language) => settings.get('translation') === language;
@@ -196,6 +207,11 @@ const SECTIONS = [
         when: () => Boolean(navigator.mediaDevices?.getDisplayMedia),
       },
       { key: 'microphone', label: 'Microphone', type: 'microphone', hint: NEXT_LISTEN },
+      {
+        type: 'soundCheck',
+        label: 'Voice over background',
+        hint: `How far the voice is above the background noise, while it listens. ${CLEAR} dB or more is clear; under ${NOISY}, too noisy to pick the reciter out. It can’t measure an echo`,
+      },
     ],
   },
   {
@@ -248,6 +264,12 @@ const SECTIONS = [
     ],
   },
   {
+    title: 'Developer',
+    about: 'The sound since Listen was last pressed: how loud it got, and the background under it',
+    collapsed: true,
+    rows: [{ type: 'soundGraph' }],
+  },
+  {
     title: 'About',
     rows: [
       { type: 'tutorial', label: 'Tutorial', hint: 'A quick tour of the buttons' },
@@ -266,6 +288,8 @@ function savedVoiceHint() {
 }
 
 let uid = 0;
+// What the app's listener hears, for the sound rows: { active, sound, log } (see SettingsPanel's `sound`)
+let heard = null;
 
 export class SettingsPanel {
   /** Called when the tutorial row's button is pressed. The panel closes itself. */
@@ -273,7 +297,17 @@ export class SettingsPanel {
   /** Called when the history row's button is pressed. The panel closes itself. */
   onHistory = null;
 
+  /**
+   * What the listener hears, for the voice-over-background reading and the developer's
+   * graph: { active: boolean, sound: { voice, noise } | null, log: { at, voice, noise }[] }
+   * (Listener's `active`, `sound` and `soundLog`).
+   */
+  set sound(source) {
+    heard = source;
+  }
+
   #dialog;
+  #live = null; // the timer that keeps the sound rows up to date while it's open
   #rows = []; // { row, update() }
   #refreshing = false; // a refresh waiting for the next frame
 
@@ -332,6 +366,7 @@ export class SettingsPanel {
     // Open, the panel is a step in the history, so Back (in the browser, or the
     // phone's back button in the app) closes it rather than leaving the page.
     dialog.addEventListener('close', () => {
+      clearInterval(this.#live);
       if (history.state?.settings) history.back();
     });
     // (Back from the offline voice, over this, leaves this open.)
@@ -355,6 +390,10 @@ export class SettingsPanel {
     history.pushState({ settings: true }, '');
     this.refresh();
     this.#dialog.showModal();
+    clearInterval(this.#live);
+    this.#live = setInterval(() => {
+      for (const { spec, update } of this.#rows) if (spec.type === 'soundCheck' || spec.type === 'soundGraph') update();
+    }, SOUND_EVERY);
     listMicrophones(this.#rows.find((r) => r.spec.type === 'microphone'));
     this.#listVoices();
     if (saved.supported) saved.load().then(() => this.refresh(), (err) => console.warn(err));
@@ -384,6 +423,7 @@ function build(spec) {
     const row = Object.assign(document.createElement('p'), { className: 'note' });
     return { row, update: () => (row.textContent = textOf(spec.text)) };
   }
+  if (spec.type === 'soundGraph') return soundGraph();
   if (spec.type === 'credits') {
     const row = Object.assign(document.createElement('p'), { className: 'note credits' });
     const link = ([text, href]) => Object.assign(document.createElement('a'), { href, target: '_blank', rel: 'noopener', textContent: text });
@@ -595,6 +635,21 @@ const CONTROLS = {
     return { control: link };
   },
 
+  // How far the voice is above the background now, and what that means (see Listener's `sound`).
+  soundCheck(spec, id) {
+    const output = Object.assign(document.createElement('output'), { id, className: 'sound-check' });
+    const update = () => {
+      const sound = heard?.sound;
+      if (!heard?.active) return setReading(output, '–', 'Press Listen first');
+      if (!sound) return setReading(output, '…', 'Measuring');
+      const apart = Math.min(Math.round(sound.voice - sound.noise), MOST_APART);
+      const verdict = apart >= CLEAR ? 'Clear' : apart >= NOISY ? 'Some noise' : 'Too noisy';
+      output.dataset.verdict = apart >= CLEAR ? 'clear' : apart >= NOISY ? 'some' : 'noisy';
+      setReading(output, `${apart}${apart === MOST_APART ? '+' : ''} dB`, `${verdict} · voice ${Math.round(sound.voice)} dB, background ${Math.round(sound.noise)} dB`);
+    };
+    return { control: output, update };
+  },
+
   // Filled in when the panel opens (see listMicrophones), since the list can change.
   microphone({ key }, id) {
     const select = Object.assign(document.createElement('select'), { id });
@@ -606,6 +661,106 @@ const CONTROLS = {
     return { control: select, update };
   },
 };
+
+function setReading(output, value, detail) {
+  if (!value.endsWith('dB')) delete output.dataset.verdict;
+  const small = Object.assign(document.createElement('small'), { textContent: detail });
+  output.replaceChildren(Object.assign(document.createElement('strong'), { textContent: value }), small);
+}
+
+/**
+ * The developer's graph: the sound since Listen was last pressed, as two lines over the
+ * time: how loud it got (the voice, when there is one), and the background under it.
+ */
+function soundGraph() {
+  const row = Object.assign(document.createElement('div'), { className: 'sound-graph' });
+  const canvas = document.createElement('canvas');
+  canvas.setAttribute('role', 'img');
+  const key = document.createElement('p');
+  const swatch = (name, text) => {
+    const item = document.createElement('span');
+    item.append(Object.assign(document.createElement('i'), { className: name }), text);
+    return item;
+  };
+  const summary = document.createElement('span');
+  key.append(swatch('voice', 'Sound (the voice)'), swatch('noise', 'Background'), summary);
+  row.append(canvas, key);
+
+  const update = () => {
+    if (!canvas.clientWidth) return; // folded away
+    const log = heard?.log ?? [];
+    const ratio = devicePixelRatio || 1;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    const g = canvas.getContext('2d');
+    g.scale(ratio, ratio);
+    const style = getComputedStyle(row);
+    const colour = (name) => style.getPropertyValue(name).trim();
+    g.font = `11px ${style.fontFamily}`;
+    g.fillStyle = colour('--dim');
+    if (!log.length) {
+      g.textAlign = 'center';
+      g.fillText(heard?.active ? 'Measuring…' : 'Nothing yet: press Listen, then come back', width / 2, height / 2);
+      summary.textContent = '';
+      canvas.setAttribute('aria-label', 'No sound measured yet');
+      return;
+    }
+    // From the quietest background to the loudest sound, on round tens of dB
+    const values = log.flatMap(({ voice, noise }) => (noise === null ? [voice] : [voice, noise])).filter(Number.isFinite);
+    const top = Math.min(0, Math.ceil(Math.max(...values) / 10) * 10);
+    const bottom = Math.max(GRAPH_FLOOR, Math.min(top - 20, Math.floor(Math.min(...values) / 10) * 10));
+    const seconds = Math.max(log.at(-1).at, GRAPH_SECONDS);
+    const left = 46;
+    const base = height - 16;
+    const x = (at) => left + (at / seconds) * (width - left - 4);
+    const y = (db) => 4 + ((top - Math.max(db, bottom)) / (top - bottom)) * (base - 4);
+    g.strokeStyle = colour('--border');
+    g.lineWidth = 1;
+    g.textAlign = 'right';
+    g.textBaseline = 'middle';
+    for (let db = top; db >= bottom; db -= 10) {
+      g.beginPath();
+      g.moveTo(left, Math.round(y(db)) + 0.5);
+      g.lineTo(width, Math.round(y(db)) + 0.5);
+      g.stroke();
+      g.fillText(`${db} dB`, left - 4, y(db));
+    }
+    g.textBaseline = 'alphabetic';
+    g.textAlign = 'left';
+    g.fillText('0:00', left, height - 2);
+    g.textAlign = 'right';
+    g.fillText(clock(seconds), width, height - 2);
+    const line = (of, name) => {
+      g.strokeStyle = colour(name);
+      g.lineWidth = 1.5;
+      g.lineJoin = 'round';
+      g.beginPath();
+      let last = null;
+      for (const point of log) {
+        const db = of(point);
+        if (db === null) continue;
+        // A gap (the app's own voice was reading aloud) breaks the line
+        if (last === null || point.at - last > GRAPH_GAP) g.moveTo(x(point.at), y(db));
+        else g.lineTo(x(point.at), y(db));
+        last = point.at;
+      }
+      g.stroke();
+    };
+    line((p) => p.noise, '--meter-noise');
+    line((p) => p.voice, '--meter-voice');
+    // Over the session: the usual gap between the two
+    const apart = log.filter((p) => p.noise !== null).map((p) => p.voice - p.noise).sort((a, b) => a - b);
+    const median = apart.length ? Math.round(apart[Math.floor(apart.length / 2)]) : null;
+    const gaps = log.some((p, i) => i && p.at - log[i - 1].at > GRAPH_GAP) ? ' · gaps are the app reading aloud' : '';
+    summary.textContent = median === null ? '' : `Usually ${median} dB apart over ${clock(log.at(-1).at)}${gaps}`;
+    canvas.setAttribute('aria-label', `The sound over ${clock(log.at(-1).at)} of listening${median === null ? '' : `: usually ${median} dB above the background`}`);
+  };
+  return { row, update };
+}
+
+const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 
 function switchInput(id) {
   const input = Object.assign(document.createElement('input'), { type: 'checkbox', id, className: 'switch' });

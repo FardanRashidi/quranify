@@ -35,7 +35,11 @@ const ANTICIPATE_WITHIN = 10; // seconds
 // ayahs that take up to this many times the time from one check to the next. Tried on
 // At-Takwir's short ayahs with checks taking 2 s, the right ayah was on screen 68% of
 // the time instead of 51% (Alafasy), and 90% instead of 85% (Husary); Al-Mulk's
-// longer ayahs were unchanged.
+// longer ayahs were unchanged. It waits a word's time past the ayah's last (LAST_WORD), as a
+// check would: moving on the moment the pace said so was early about once in two minutes,
+// and the next check then put it back. Replayed on four reciters, in a quiet room and two
+// echoing ones, waiting made that a third as often and going back half as often, with the
+// right ayah on screen 1 to 2 points less of the time (it's behind a little longer instead).
 const SHORT_AYAH = 1.5;
 const RECKON_FOR = 6; // seconds: how far past the last check it goes by pace alone
 
@@ -143,7 +147,7 @@ export class Follower {
 
   /**
    * The ayah to show the reciter on now: the one they're on, or past each short
-   * ayah whose last word they'd have said by now at their pace (see SHORT_AYAH).
+   * ayah they'd have finished by now at their pace, and a word's time more (see SHORT_AYAH).
    * It stops at a longer one, which waits for a check or a pause.
    * @param {number} now performance.now()
    * @param {{ firstWord: number, words: number }[] | undefined} verses their surah's, once it's loaded
@@ -156,7 +160,7 @@ export class Follower {
     let ayah = this.at.ayah;
     while (ayah < verses.length) {
       const verse = verses[ayah - 1];
-      if (verse.words / this.pace > SHORT_AYAH * turnaround || said < verse.firstWord + verse.words - 1) break;
+      if (verse.words / this.pace > SHORT_AYAH * turnaround || said < verse.firstWord + verse.words - 1 + LAST_WORD) break;
       ayah++;
     }
     return ayah;

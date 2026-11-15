@@ -18,7 +18,8 @@ const LOUDEST_MEMORY = 4; // s: the loudest lately fades over about this long
 // Silence longer than this is the reciter stopping, rather than a breath between ayahs or
 // surahs: it doesn't count towards how long they've been reciting.
 const STOP = 2.5; // s
-// The meter's bars: from this low a sound to this high, and from this quiet to this loud.
+// The meter's bars: how many, from this low a sound to this high, and from this quiet to this loud.
+const METER_BARS = 5;
 const METER_FROM = 60; // Hz
 const METER_TO = 8000;
 const METER_QUIET = -90; // dB, in the loudest part of a bar's band
@@ -40,6 +41,13 @@ const VOICE_ABOVE = 21;
 const BACKGROUND_WITHIN = 3;
 // A bar this short (of its height) or shorter is too faint for its background to matter: it fades to none.
 const FAINT = 0.1;
+// The voice, for the reading in the settings: the loudest all the bands together have been
+// lately, which falls away this fast once they go quiet.
+const VOICE_FALLS = 3; // dB a second
+// The sound log, for the graph in the settings: a reading this often, for this long at the most.
+const LOG_EVERY = 0.5; // s
+const LOG_FOR = 60 * 60; // s
+const MEASURE_EVERY = 100; // ms: how often it measures when nothing's drawing the meter
 // Chrome on Android names a phone's microphones by how it routes the sound: "Speakerphone"
 // and "Headset earpiece". Left on the default, the app takes the speakerphone's, the one
 // for hearing a room, which suits a recitation playing from a speaker.
@@ -61,6 +69,12 @@ export class Listener {
   #analyser = null;
   #freq = null;
   #meter = null;
+  #bars = null; // the meter's last reading
+  #measuredAt = -Infinity;
+  #measuring = null; // the timer that measures when the page isn't asking
+  #startedAt = 0;
+  #log = []; // { at, voice, noise }: see soundLog
+  #logging = null; // the reading being gathered for the log: { until, voice, noise }
   #ring = null;
   #written = 0;
   #lastChunkAt = 0;
@@ -137,7 +151,11 @@ export class Listener {
       this.#analyser.fftSize = 2048;
       this.#analyser.smoothingTimeConstant = 0.6;
       this.#freq = new Float32Array(this.#analyser.frequencyBinCount);
-      this.#meter = null; // a new one, with no memory of the last room
+      this.#meter = new Meter(METER_BARS); // a new one, with no memory of the last room
+      this.#bars = null;
+      this.#log = [];
+      this.#logging = null;
+      this.#startedAt = performance.now();
       input.connect(this.#analyser);
 
       this.#ring = new Float32Array(ctx.sampleRate * RING_SECONDS);
@@ -149,6 +167,9 @@ export class Listener {
       capture.port.onmessage = ({ data }) => this.#push(data);
       this.#stream = stream;
       this.#ctx = ctx;
+      // The log and the reading in the settings go on with the meter hidden, or the page not drawing
+      clearInterval(this.#measuring);
+      this.#measuring = setInterval(() => performance.now() - this.#measuredAt >= MEASURE_EVERY && this.#measure(), MEASURE_EVERY);
     } catch (err) {
       stream.getTracks().forEach((track) => track.stop());
       throw err;
@@ -159,6 +180,8 @@ export class Listener {
     this.#stream?.getTracks().forEach((track) => track.stop());
     this.#ctx?.close();
     this.#stream = this.#ctx = this.#analyser = null;
+    clearInterval(this.#measuring);
+    this.#measuring = null;
   }
 
   /**
@@ -213,15 +236,52 @@ export class Listener {
   }
 
   /**
-   * What it hears now, in `count` log-spaced bands (60 Hz – 8 kHz): each { level, noise }.
+   * What it hears now, in METER_BARS log-spaced bands (60 Hz – 8 kHz): each { level, noise }.
    * `level` is how loud, 0..1, and `noise` how much of that is the background rather than
    * a voice over it, 0..1 (see Meter).
    */
-  levels(count) {
-    if (!this.#analyser) return Array.from({ length: count }, () => ({ level: 0, noise: 0 }));
+  levels() {
+    if (!this.#analyser) return Array.from({ length: METER_BARS }, () => ({ level: 0, noise: 0 }));
+    return this.#measure();
+  }
+
+  /**
+   * How loud the voice and the background under it are now, in dB (of the loudest the
+   * microphone can take, so both are below 0): { voice, noise }, or null when it isn't
+   * listening, or hasn't for long enough to tell them apart. See Meter.
+   */
+  get sound() {
+    return this.#analyser ? (this.#meter?.sound ?? null) : null;
+  }
+
+  /**
+   * The sound since it last started listening, for a graph: every LOG_EVERY seconds,
+   * { at, voice, noise }: seconds from the start, the loudest it got in that time, and the
+   * background then (both dB). Kept after it stops, until it starts again. Without the
+   * stretches where the app's own voice was reading aloud.
+   */
+  get soundLog() {
+    return this.#log;
+  }
+
+  #measure() {
+    const now = performance.now();
+    this.#measuredAt = now;
     this.#analyser.getFloatFrequencyData(this.#freq);
-    if (this.#meter?.count !== count) this.#meter = new Meter(count);
-    return this.#meter.read(this.#freq, this.#ctx.sampleRate / this.#analyser.fftSize, performance.now());
+    this.#bars = this.#meter.read(this.#freq, this.#ctx.sampleRate / this.#analyser.fftSize, now);
+    const loudness = this.#meter.loudness;
+    const sound = this.#meter.sound;
+    if (loudness === null || this.isDeaf?.()) this.#logging = null;
+    else {
+      this.#logging ??= { until: now + LOG_EVERY * 1000, voice: -Infinity };
+      this.#logging.voice = Math.max(this.#logging.voice, loudness);
+      if (now >= this.#logging.until) {
+        this.#log.push({ at: (now - this.#startedAt) / 1000, voice: this.#logging.voice, noise: sound?.noise ?? null });
+        if (this.#log.length > LOG_FOR / LOG_EVERY) this.#log.shift();
+        this.#logging = null;
+      }
+    }
+    return this.#bars;
   }
 
   #push(chunk) {
@@ -281,6 +341,9 @@ export class Meter {
   #bands;
   #at = null; // when it last read (ms)
   #heard = 0; // seconds of readings since the sound began
+  #loudness = null; // all the bands together, now (dB)
+  #voice = -Infinity; // the loudest that's been lately
+  #noise = null; // and their backgrounds together
 
   constructor(count) {
     this.count = count;
@@ -315,12 +378,16 @@ export class Meter {
     if (!sound) return heard.map(() => ({ level: 0, noise: 0 }));
     this.#heard += seconds;
 
-    return heard.map(({ max, loudness }, i) => {
+    let all = 0; // power, over every band
+    let under = 0; // and of their backgrounds
+    const bars = heard.map(({ max, loudness }, i) => {
       const band = this.#bands[i];
       band.smooth = band.smooth === null ? loudness : band.smooth + (loudness - band.smooth) * (1 - Math.exp(-seconds / BACKGROUND_FOR));
       band.quietest = Math.min(band.quietest, band.smooth);
       band.since += seconds;
       const background = Math.min(band.quietest, ...band.before);
+      all += 10 ** (band.smooth / 10);
+      under += 10 ** (background / 10);
       if (band.since >= BACKGROUND_STEP) {
         band.before.push(band.quietest);
         if (band.before.length >= BACKGROUND_MEMORY / BACKGROUND_STEP) band.before.shift();
@@ -332,6 +399,24 @@ export class Meter {
       const known = clamp((this.#heard - BACKGROUND_AFTER) / BACKGROUND_OVER) * clamp(level / FAINT);
       return { level, noise: known * clamp((VOICE_ABOVE - (loudness - background)) / (VOICE_ABOVE - BACKGROUND_WITHIN)) };
     });
+    this.#loudness = 10 * Math.log10(all);
+    this.#voice = Math.max(this.#loudness, this.#voice - VOICE_FALLS * seconds);
+    this.#noise = 10 * Math.log10(under);
+    return bars;
+  }
+
+  /** All the bands together, now (dB), or null before any sound. */
+  get loudness() {
+    return this.#loudness;
+  }
+
+  /**
+   * { voice, noise } in dB: the loudest all the bands together have been lately, and their
+   * backgrounds together. Null until it has listened long enough to have heard a gap.
+   */
+  get sound() {
+    if (this.#noise === null || this.#heard < BACKGROUND_AFTER) return null;
+    return { voice: this.#voice, noise: this.#noise };
   }
 }
 

@@ -259,8 +259,8 @@ minutes).
    any ayah, or of the recitation.
 4. Through short ayahs, ones over before the next check could come round (like
    At-Takwir's, three words each), it doesn't wait to hear each one end. It
-   moves on when the reciter's pace says they've finished, and the checks
-   keep it right.
+   moves on when the reciter's pace says they've finished, and a word's time
+   more so it isn't there before them, and the checks keep it right.
 5. If a check comes back without placing the reciter, and it's been 12 seconds
    since one did (a long pause, noise, or a passage it can't tell apart from
    another), the verses dim, the status says *Can't hear the reciter*, and it
@@ -517,15 +517,16 @@ a tap outside it.
 | --------------------- | -------- |
 | text                  | text size (Normal, Large or Largest, for everything); Arabic size on top of that. A sample ayah (51:21) shows the result as you go. |
 | translation and voice | everything about the translation and hearing it: the translation (any of 46 languages, or none) and its size; the voice for it (English: **Ibrahim Walk (recorded)**, or any of the device's English voices; other languages: the device's voices for them), with a **Try** button to hear it, kept for each language, or a note when the device has none; in the app, **save the voice for offline** (see [Saving it for offline](#saving-it-for-offline)); reading speed (1×, from 0.5× to 2×); read aloud when Listen finds the ayah (on); read every ayah while following (on); keep listening while reading (off). The reading rows grey out with no translation or no voice. |
-| listening             | follow the reciter once it's found (on); scroll along to each ayah (on); how long it listens without placing the reciter before giving up (1 min, from 20 s to 10 min); audio source; which microphone (when there's more than one: on a phone, the default is the speakerphone's, for hearing a room) |
+| listening             | follow the reciter once it's found (on); scroll along to each ayah (on); how long it listens without placing the reciter before giving up (1 min, from 20 s to 10 min); audio source; which microphone (when there's more than one: on a phone, the default is the speakerphone's, for hearing a room); **voice over background**, a reading of how many dB the voice is above the background noise while it listens (20 or more is clear, under 14 too noisy; see [the meter](#audio-capture)) |
 | appearance            | theme (dark, light, or auto to follow the device), accent colour, level meter (on the Listen button), animations |
 | tajweed               | tajweed colours and the key above each surah; and each tajweed colour on its own: on or off, and which colour |
 | auto search           | Android app only: listening in the background, on or off; **Add** the Quick Settings tile (Android 13 and later); **Show** the history. See [Auto search](#auto-search). |
 | advanced              | folded away until it's opened: the shortest wait between checks while following (2 s, from 1 to 5) and the longest (5 s, from 2 to 15); how much audio each check hears (8 s, from 5 to 12: less is a little quicker, but hears fewer words of a slow reciter; see [Shorter checks](#shorter-checks)) |
+| developer             | folded away until it's opened: a graph of the sound since Listen was last pressed, with one line for how loud it got (the voice) and one for the background under it, and the usual gap between them |
 | about                 | the [tutorial](#the-tutorial); a link to the developer's [GitHub](https://github.com/FardanRashidi), opened in the browser; and credits for the text, the translation shown, the recorded voice and the speech model |
 
 The very bottom says which version it is, and which git commit it was built
-from when there is one: *Quran Whisperer · version 1.1.0 (4db06dc)*. It comes
+from when there is one: *Quran Whisperer · version 1.2.0 (4db06dc)*. It comes
 from `version.json`, which the server makes from `package.json` (and the git
 commit), and `app/build.mjs` writes into the app. See [Versions](#versions).
 
@@ -627,6 +628,22 @@ All in [`public/js/listener.js`](public/js/listener.js) and
   a hall rings for seconds: a pause is long enough for a shorter echo to die
   away, so a room that is only echoey still looks mostly green. Nor can it
   tell the reciter from someone talking beside the phone: both are voices.
+- **Voice over background.** The same `Meter` adds the bands up: the loudest
+  they've been together lately (it falls 3 dB a second once they go quiet) is
+  the voice, and their backgrounds together are the noise. `Listener.sound`
+  gives both in dB below the loudest the microphone takes, and the settings
+  show the difference, twice a second while they're open. On the simulated
+  rooms the reading was usually 23 dB for a recitation on its own, 16 dB with
+  people talking 10 dB below it, and 14 dB with them 5 dB below it, where a
+  check finds the ayah half as often: so 20 or more reads *Clear*, and under
+  14 *Too noisy*. It swings by several dB as the reciter pauses, and like the
+  bars it doesn't show an echo: the simulated masjid read 15 dB.
+- **The sound log.** Every half second the listener keeps how loud it got and
+  the background then (`Listener.soundLog`, an hour at most, without the
+  stretches where the app's own voice was reading aloud). It measures ten
+  times a second by itself when the meter is hidden or the page isn't
+  drawing. The log stays after Stop, until the next Listen: it's what the
+  settings' **developer** graph draws.
 
 ## Finding the ayah
 
@@ -1025,6 +1042,27 @@ little: his pauses already did the job, and going by pace sometimes moves on
 before he's done. Going by pace through every ayah, long ones too, moved on
 too early in them (Al-Mulk by Alafasy at 0.8 s: 94%, against 98%), so it's
 kept to the ones checks can't keep up with.
+
+Since 1.2.0 it also waits one more word's time before moving on by pace.
+Through a speaker in a room, it had been seen to move on before the reciter
+got there, go back at the next check, and move on again. Following was
+replayed on 48 recordings (four reciters, twelve passages, 46 s each), clean
+and in two simulated rooms, counting each move to an ayah more than a second
+before the reciter reached it. Moves by pace, before and after, over about
+37 minutes of each:
+
+| Heard as | 1 s checks: early by pace | went back, a minute | right ayah | 2.5 s checks: early by pace | went back, a minute | right ayah |
+| -------- | ------------------------- | ------------------- | ---------- | --------------------------- | ------------------- | ---------- |
+| Clean | 12 → 5 | 0.22 → 0.11 | 91% → 90% | 15 → 5 | 0.08 → 0.03 | 86% → 84% |
+| A living room, 2–3 m away | 7 → 3 | 0.19 → 0.19 | 87% → 86% | 12 → 4 | 0.16 → 0.11 | 82% → 81% |
+| A TV across an echoing room, people talking | 4 → 1 | 0.08 → 0.05 | 80% → 80% | 10 → 2 | 0.08 → 0.05 | 73% → 73% |
+
+What it gives up is a point or two of time on the right ayah: it's behind for
+a moment longer instead of ahead. Not moving on by pace at all went back
+least, but was on the right ayah 4 to 6 points less with 2.5 s checks. Holding
+an ayah after a check had put it back there made no difference that showed.
+The passages are short, and only two of the twelve have short ayahs, so the
+counts are small. (The table above this one was measured before the change.)
 
 ### Shorter checks
 
@@ -1668,7 +1706,7 @@ Measured on a Ryzen 7 5800X3D unless noted.
 `package.json`'s `version` is the one place to change it, for each release:
 
 - **The settings** show it at the very bottom, with the git commit it was built
-  from when there is one: *Quran Whisperer · version 1.1.0 (4db06dc)*.
+  from when there is one: *Quran Whisperer · version 1.2.0 (4db06dc)*.
   [`server/version.js`](server/version.js) reads both. The server sends them as
   `/version.json`, and `app/build.mjs` writes `version.json` into the app. The
   Home Assistant add-on has no `.git`, so it shows just the version.
@@ -1767,6 +1805,19 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 - **A slow server falls further behind.** With checks taking 2 s (Home
   Assistant on 2 cores), following was on the right ayah 80% of the time instead
   of 90%, and 67% for Sudais's quick Ya-Sin.
+- **An echoing room** is what it hears worst, far more than noise or a tinny
+  speaker. With rooms simulated over four reciters' recordings, it found the
+  ayah in a median of 5 s clean, 7 s in a living room, 9 s from a TV across an
+  echoing room, 21 s in a hall that rings for 1.5 s, and not within 32 s in a
+  large masjid (2.5 s and more): there the speech model writes other words
+  altogether. Removing the echo first (two ways), the unquantised model,
+  looser matching and longer clips were each tried. Only longer clips did
+  anything: letting a search send up to 16 s once it had that much found 96%
+  within 15 s in the living room instead of 88%, and 85% instead of 81% from
+  the TV, with the median the same, and nothing gained in the hall. It isn't
+  the default, since each check then takes longer on a phone. Nearer the
+  speaker is what helps. A speech model trained on recitations with echo
+  added would be the real fix.
 - **Reading aloud through a speaker** (on by default) pauses following's
   checks while the voice speaks. Every ayah is still read, but the reading
   can fall behind the reciter, and it only finds out where they've got to
