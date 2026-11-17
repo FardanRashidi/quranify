@@ -1356,6 +1356,9 @@ machine's hostname, `127.0.0.1` and every LAN IPv4 address, and saves it in
   The model and any other translation are downloaded once, from the phone
   itself. Audio never leaves the phone, auto search's included.
 
+The Android app's privacy policy is [`docs/privacy.html`](docs/privacy.html),
+published at <https://fardanrashidi.github.io/quranify/privacy.html>.
+
 ## Home Assistant add-on
 
 [`homeassistant/quran_finder/`](homeassistant/quran_finder/) packages the server

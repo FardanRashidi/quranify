@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quran Whisperer Privacy Policy</title>
+<meta name="description" content="Privacy policy for the Quran Whisperer Android app.">
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --fg: #1d1d1b;
+    --muted: #5d5b55;
+    --rule: #e3e0d8;
+    --accent: #1f6f50;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413;
+      --fg: #ecebe6;
+      --muted: #a7a59d;
+      --rule: #2e2d2a;
+      --accent: #6fcf9f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 42rem; margin: 0 auto; padding: 48px 16px 64px; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 2em 0 0.4em; }
+  .updated { color: var(--muted); margin: 0 0 2em; }
+  .summary { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 0 0 1.5em; }
+  ul { padding-left: 1.2em; }
+  li { margin: 0.35em 0; }
+  a { color: var(--accent); }
+  code { font-size: 0.92em; overflow-wrap: anywhere; }
+  footer { margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Quran Whisperer for Android · Last updated 17 November 2026</p>
+
+  <p class="summary">Quran Whisperer has no accounts, no ads, no analytics and no tracking. Your recordings are
+  processed on your phone and are never uploaded or stored. The developer does not collect any of your data.</p>
+
+  <h2>Microphone</h2>
+  <p>The app asks for microphone access so it can hear a Quran recitation and work out which surah and ayah is
+  being recited. The audio is turned into text by a speech model that runs on your phone. Audio is kept in memory
+  only while it is being processed, is never saved to storage, and never leaves the device. This includes
+  <strong>auto search</strong>, which listens in the background (with a visible notification) only when you turn
+  it on, and stops when you turn it off.</p>
+
+  <h2>What is stored on your phone</h2>
+  <ul>
+    <li>Your settings (such as text size, translation and voice).</li>
+    <li>The auto search history: which surahs were recognised and when. You can clear it at any time in the app.</li>
+    <li>Downloaded files: the speech model, translations, and any recorded English voice you choose to save for offline use.</li>
+  </ul>
+  <p>All of this stays on your device. Uninstalling the app or clearing its data deletes it.</p>
+
+  <h2>Network requests</h2>
+  <p>The app uses the internet only to download content. It never sends your audio, your history or your settings.
+  The services below receive ordinary web requests, so they can see your IP address and which file was asked for:</p>
+  <ul>
+    <li><strong>Hugging Face</strong> (<code>huggingface.co</code>): the speech model, downloaded once on first use.</li>
+    <li><strong>Al Quran Cloud</strong> (<code>api.alquran.cloud</code>) and <strong>Quran.com</strong> (<code>api.quran.com</code>): translations other than English, the first time you choose one.</li>
+    <li><strong>Islamic Network CDN</strong> (<code>cdn.islamic.network</code>): the recorded English voice, when it is played or saved for offline use.</li>
+  </ul>
+  <p>Each of these services has its own privacy policy.</p>
+
+  <h2>Reading aloud</h2>
+  <p>When the app reads a translation aloud with your device's voice, it passes the translation text to Android's
+  text-to-speech engine. Most engines run on the device; if you have chosen an online voice, your text-to-speech
+  provider may process that text under its own policy. Your audio is never passed to it.</p>
+
+  <h2>Permissions</h2>
+  <ul>
+    <li><strong>Microphone</strong>: to recognise the recitation.</li>
+    <li><strong>Notifications</strong>: for auto search's ongoing notification and the surahs it finds.</li>
+    <li><strong>Foreground service</strong> and <strong>keep awake</strong>: so auto search can keep listening while the screen is off.</li>
+    <li><strong>Internet</strong>: for the downloads listed above.</li>
+  </ul>
+
+  <h2>Sharing and selling data</h2>
+  <p>No personal data is collected, so none is shared with or sold to anyone.</p>
+
+  <h2>Children</h2>
+  <p>The app does not knowingly collect information from anyone, including children under 13.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the updated version will be posted on this page with a new date.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy can be raised on the project's
+  <a href="https://github.com/FardanRashidi/quranify/issues">GitHub issues page</a>.</p>
+
+  <footer>Quran Whisperer · <a href="https://github.com/FardanRashidi/quranify">Source code</a></footer>
+</main>
+</body>
+</html>
