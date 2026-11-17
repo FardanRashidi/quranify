@@ -32,4 +32,11 @@ public class MainActivity extends BridgeActivity {
             }
         });
     }
+
+    @Override
+    public void onDestroy() {
+        // The page that was listening is gone: so is the reason to keep the microphone
+        if (isFinishing()) ListeningService.stop(this);
+        super.onDestroy();
+    }
 }

@@ -51,6 +51,15 @@ export function keepScreenOn(on) {
   Screen.keepOn({ on }).catch((err) => console.warn(err));
 }
 
+let listening = false;
+
+/** While Listen is on: keeps the microphone going with the screen off (ListeningService.java). */
+export function keepListening(on) {
+  if (on === listening || !Capacitor.isNativePlatform()) return;
+  listening = on;
+  Screen.keepListening({ on }).catch((err) => console.warn(err));
+}
+
 /**
  * Auto search (AutoSearchService.java): listens in the background, with the screen
  * off too, and posts a notification for each surah it recognises. Its Quick

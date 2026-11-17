@@ -82,7 +82,7 @@ const recordedVoice = () => translatedTo('en') && recording.supported && setting
  * Each section's rows. `when` hides a row (or leaves out a section) that doesn't
  * apply here, and `enabledWhen` greys out one that does nothing with the current
  * settings. `about` is a line under the section's title, saying what's in it. Each
- * section is folded away until it's opened (and stays open for next time), but for an
+ * section starts folded away each time the app opens, but for an
  * `open` one, which always is.
  */
 const SECTIONS = [
@@ -337,7 +337,6 @@ export class SettingsPanel {
   constructor(dialog) {
     this.#dialog = dialog;
     const body = dialog.querySelector('.settings-body');
-    const opened = openSections();
     for (const { title, about, rows, when, open } of SECTIONS) {
       if (when && !when()) continue;
       const heading = Object.assign(document.createElement('h3'), { textContent: title });
@@ -349,7 +348,7 @@ export class SettingsPanel {
         if (blurb) section.append(blurb);
       } else {
         // Folded away: a <details>, with the title and what's in it as what opens it
-        section = Object.assign(document.createElement('details'), { className: 'category', open: opened.has(title) });
+        section = Object.assign(document.createElement('details'), { className: 'category' });
         const summary = document.createElement('summary');
         const text = document.createElement('span');
         text.append(heading);
@@ -357,9 +356,6 @@ export class SettingsPanel {
         summary.append(text);
         section.append(summary);
         section.addEventListener('toggle', () => {
-          if (section.open) opened.add(title);
-          else opened.delete(title);
-          saveOpenSections(opened);
           if (section.open) this.refresh(); // the graph draws once it has room
         });
       }
@@ -837,20 +833,11 @@ async function listVoices(entry) {
   entry.update();
 }
 
-// Which sections were left open, for next time (in this browser only)
-const OPEN_KEY = 'settingsOpen';
-function openSections() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(OPEN_KEY)) ?? []);
-  } catch {
-    return new Set();
-  }
-}
-function saveOpenSections(open) {
-  try {
-    localStorage.setItem(OPEN_KEY, JSON.stringify([...open]));
-  } catch {}
-}
+// Sections used to stay open from one launch to the next: now they all start
+// folded, so forget what was saved then.
+try {
+  localStorage.removeItem('settingsOpen');
+} catch {}
 
 // Which version this is, at the very bottom, to tell builds apart: version.json
 // comes from package.json (the server makes it, and app/build.mjs for the app).

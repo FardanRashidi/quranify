@@ -31,6 +31,12 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <!-- Keeps the page's Listen going with the screen off: see ListeningService.java -->
+        <service
+            android:name=".ListeningService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
         <service
             android:name=".AutoSearchTile"
             android:exported="true"

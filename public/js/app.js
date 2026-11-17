@@ -903,8 +903,10 @@ function renderReading() {
 }
 
 // Keep the screen on while listening or reading aloud: nobody's touching it then.
+// And in the app, keep listening if the screen goes off anyway.
 function updateWakeLock() {
   api.keepScreenOn(listener.active || state.reading);
+  api.keepListening(listener.active);
 }
 
 // --- rendering --------------------------------------------------------------
