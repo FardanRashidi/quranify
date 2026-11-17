@@ -219,8 +219,8 @@ For a recitation through a masjid's speakers, or a prayer on TV:
   takbirs), that's rukuʿ and sujud: it goes back to Al-Fatiha, ready for the
   next rakaah. It doesn't give up for 15 minutes.
 - **Earphones.** Reading the translation through the phone's speaker, it can't
-  listen at the same time, so it falls behind the imam. With earphones, turn
-  on **keep listening while reading**.
+  listen at the same time, so it falls behind the imam. With earphones, leave
+  **keep listening while reading** on (it is by default).
 
 A two-rakaah prayer by Sudais (Al-Fatiha and Al-Kafirun, 25 s of quiet,
 Al-Fatiha and Al-Ikhlas, 2 s for *Amin* after each Fatiha) was played to the
@@ -414,8 +414,8 @@ leaving the rest of the old one unread, and the new one's first ayahs too.
 
 The microphone would hear the voice through the speaker and get confused. So
 while it reads, following pauses its checks, and afterwards it only listens to
-the audio recorded since the voice stopped. With headphones, or with tab audio
-as the source, turn on **keep listening while reading** in the settings, and it
+the audio recorded since the voice stopped, if **keep listening while reading** is turned off. With headphones, or with tab audio
+as the source, leave **keep listening while reading** on (the default), and it
 keeps checking the whole time.
 
 The voices:
@@ -572,7 +572,7 @@ time (in this browser or app, under `settingsOpen`). **About** is always open.
 | Category              | Settings |
 | --------------------- | -------- |
 | listening             | follow the reciter once it's found (on); read aloud when Listen finds the ayah (on); scroll along to each ayah (on); how long it listens without placing the reciter before giving up (1 min, from 20 s to 10 min); audio source; which microphone (when there's more than one: on a phone, the default is the speakerphone's, for hearing a room) |
-| at the masjid         | **prayer mode** and **masjid mode** (both off; see [At the masjid](#at-the-masjid)); keep listening while reading (off: turn it on with earphones in); **voice over background**, a reading of how many dB the voice is above the background noise while it listens (20 or more is clear, under 14 too noisy; see [the meter](#audio-capture)) |
+| at the masjid         | **prayer mode** and **masjid mode** (both off; see [At the masjid](#at-the-masjid)); keep listening while reading (on: best with earphones in; turn it off when reading through the speaker); **voice over background**, a reading of how many dB the voice is above the background noise while it listens (20 or more is clear, under 14 too noisy; see [the meter](#audio-capture)) |
 | text and translation  | text size (Normal, Large or Largest, for everything); Arabic size on top of that, with a sample ayah (51:21) to show the result; the translation (any of 46 languages, or none) and its size |
 | reading aloud         | the voice for the translation (English: **Ibrahim Walk (recorded)**, or any of the device's English voices; other languages: the device's voices for them), with a **Try** button to hear it, kept for each language, or a note when the device has none; in the app, **save the voice for offline** (see [Saving it for offline](#saving-it-for-offline)); reading speed (1×, from 0.5× to 2×); read every ayah while following (on). They grey out with no translation or no voice. |
 | appearance            | theme (dark, light, or auto to follow the device), accent colour, level meter (on the Listen button), animations |

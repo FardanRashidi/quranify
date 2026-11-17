@@ -38,7 +38,7 @@ export const DEFAULTS = Object.freeze({
   // own. English can also be the recording (reader.js's RECORDED), and is by default.
   ...Object.fromEntries(TRANSLATIONS.map(({ code }) => [`voice-${code}`, ''])),
   'voice-en': 'ibrahim-walk',
-  listenWhileReading: false, // check while reading aloud (with headphones, the microphone can't hear it)
+  listenWhileReading: true, // check while reading aloud (best with earphones; off: checks wait while it reads, so the microphone doesn't hear the voice)
   readEveryAyah: true, // following: read each ayah in turn, faster when behind, rather than skip to the reciter's
   // listening
   source: 'mic', // mic | tab
