@@ -48,6 +48,17 @@ const VOICE_FALLS = 3; // dB a second
 const LOG_EVERY = 0.5; // s
 const LOG_FOR = 60 * 60; // s
 const MEASURE_EVERY = 100; // ms: how often it measures when nothing's drawing the meter
+// Too noisy: the voice under this many dB above the background, on average over the last
+// TOO_NOISY_OVER seconds. On four reciters with rooms and noise simulated, that was 4% of
+// the time for a recitation on its own, and about half of it with people talking 5 dB
+// below the reciter, or a TV with the family talking, where checks found the ayah a fifth
+// to two fifths as often. (A steady hiss can read as noisy too, though it's heard through.)
+const TOO_NOISY = 15; // dB
+const TOO_NOISY_OVER = 5; // s
+// Nor before it has measured for this long: until then the background isn't settled, and
+// a recitation on its own read as too noisy for a moment, in the app on the emulator.
+const TOO_NOISY_AFTER = 8; // s
+const MOST_APART = 40; // dB: more than this is a silent background, as far as the average goes
 // Chrome on Android names a phone's microphones by how it routes the sound: "Speakerphone"
 // and "Headset earpiece". Left on the default, the app takes the speakerphone's, the one
 // for hearing a room, which suits a recitation playing from a speaker.
@@ -75,6 +86,8 @@ export class Listener {
   #startedAt = 0;
   #log = []; // { at, voice, noise }: see soundLog
   #logging = null; // the reading being gathered for the log: { until, voice, noise }
+  #apart = null; // the voice over the background (dB), averaged over TOO_NOISY_OVER
+  #apartFor = 0; // seconds of that average
   #ring = null;
   #written = 0;
   #lastChunkAt = 0;
@@ -155,6 +168,8 @@ export class Listener {
       this.#bars = null;
       this.#log = [];
       this.#logging = null;
+      this.#apart = null;
+      this.#apartFor = 0;
       this.#startedAt = performance.now();
       input.connect(this.#analyser);
 
@@ -264,13 +279,24 @@ export class Listener {
     return this.#log;
   }
 
+  /** Whether it's been too noisy to pick the reciter out lately (see TOO_NOISY). */
+  get tooNoisy() {
+    return this.#analyser !== null && this.#apartFor >= TOO_NOISY_AFTER && this.#apart < TOO_NOISY;
+  }
+
   #measure() {
     const now = performance.now();
+    const seconds = Math.min(1, (now - this.#measuredAt) / 1000);
     this.#measuredAt = now;
     this.#analyser.getFloatFrequencyData(this.#freq);
     this.#bars = this.#meter.read(this.#freq, this.#ctx.sampleRate / this.#analyser.fftSize, now);
     const loudness = this.#meter.loudness;
     const sound = this.#meter.sound;
+    if (sound && !this.isDeaf?.()) {
+      const apart = Math.min(sound.voice - sound.noise, MOST_APART);
+      this.#apart = this.#apart === null ? apart : this.#apart + (apart - this.#apart) * (1 - Math.exp(-seconds / TOO_NOISY_OVER));
+      this.#apartFor += seconds;
+    }
     if (loudness === null || this.isDeaf?.()) this.#logging = null;
     else {
       this.#logging ??= { until: now + LOG_EVERY * 1000, voice: -Infinity };

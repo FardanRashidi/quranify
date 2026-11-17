@@ -49,6 +49,22 @@ const MAX_CATCH_UP = 1.5;
 const MAX_BEHIND = 10;
 const NAME = 'Quran Whisperer';
 const METER_MIN = 0.15; // of a bar's height, so it shows when it's quiet
+// Masjid mode: searching, a check hears up to this much once there's that much, rather than
+// clipSeconds. Replayed with rooms simulated, it found the ayah within 15 s 96% of the time in
+// a living room (88% with 8 s), and 85% from a TV across an echoing room (81%).
+const MASJID_CLIP = 16; // s
+const MASJID_GIVE_UP = 10 * 60; // s, at the least
+// Prayer mode (see prayer below)
+const FATIHA = 1;
+const FATIHA_FIRST_WORD = 0; // its first word, to look near
+// Al-Fatiha's verses heard again this soon after it's finished are its end, or the "Amin"
+// after it, still in the audio, rather than the next rakaah's.
+const FATIHA_AGAIN_AFTER = 30; // s
+// Not placed for this long, and mostly quiet over it: the imam has gone into rukuʿ, and the
+// next thing recited is the next rakaah's Fatiha.
+const RAKAAH_QUIET = 20; // s
+const RAKAAH_SOUND = 4; // s: at most this much sound over it (the takbirs)
+const PRAYER_GIVE_UP = 15 * 60; // s, at the least: a rakaah's sujud and sitting are long
 // The key above each surah, in Malay when the translation is Malay. Each waqf
 // sign is written out in full-size letters (it's a miniature of them), since a
 // sign on its own has nothing to sit on.
@@ -158,6 +174,11 @@ const state = {
   readSession: 0, // bumped whenever a read in progress should be dropped
   readEndedAt: -Infinity, // when the voice last went quiet, so checks can leave it out
   readError: '',
+  // Prayer mode: null, or what it's listening for: 'fatiha' (from the top of a rakaah), then
+  // 'surah' (the one after it, anywhere in the Quran), and its time: when that began
+  prayer: null,
+  prayerAt: 0,
+  prayerReciting: 0, // the listener's recitingSeconds then
 };
 
 // --- listening loop ---------------------------------------------------------
@@ -203,9 +224,73 @@ async function start(follow = settings.get('listenFollow')) {
     reset();
     state.searchFrom = null;
   }
+  state.prayer = null;
+  if (settings.get('prayerMode')) expectFatiha();
   setStatus('searching');
   schedule(state.scope ? FIRST_TRY_IN_SURAH : FIRST_TRY_AFTER);
   requestAnimationFrame(frame);
+}
+
+// --- prayer mode -------------------------------------------------------------
+
+/**
+ * Prayer mode, the start of a rakaah: Al-Fatiha comes first, so it's on screen at its first
+ * ayah before it's heard, and the search looks there first (any surah can still be found).
+ */
+function expectFatiha() {
+  // Reading along: it starts again once Al-Fatiha is heard, not now, in the sujud
+  const wasReading = state.reading;
+  if (state.reading) stopReading();
+  state.prayer = 'fatiha';
+  setPrayerTime();
+  follower.reset();
+  state.unsure = false;
+  state.missed = 0;
+  state.scope = null;
+  state.searchFrom = FATIHA_FIRST_WORD;
+  state.placed = false;
+  state.readOnFind = settings.get('listenRead') || wasReading;
+  if (state.surah?.number === FATIHA && state.surah.verses) setAyah(1, true);
+  else showSurah(FATIHA, 1);
+}
+
+/** Prayer mode: Al-Fatiha is done, so what comes next is a surah, from anywhere. */
+function expectSurah() {
+  state.prayer = 'surah';
+  setPrayerTime();
+  follower.reset();
+  state.searchFrom = null;
+  state.missed = 0;
+  state.readOnFind = settings.get('listenRead') && !state.reading;
+}
+
+function setPrayerTime() {
+  state.prayerAt = performance.now();
+  state.prayerReciting = listener.recitingSeconds;
+  state.heardAt = state.prayerAt; // what it hasn't heard yet counts from here
+  state.listenStartedAt = state.prayerAt;
+}
+
+/** Prayer mode, from frame(): on through the rakaah as the follower goes. */
+function prayerStep() {
+  if (!state.prayer || state.unsure) return;
+  if (follower.found && follower.at.surah === FATIHA) {
+    state.prayer = 'fatiha';
+    // Its last ayah finished (the follower goes one past it)
+    if (follower.at.ayah > state.surah?.verses?.length && state.surah?.number === FATIHA) expectSurah();
+    return;
+  }
+  if (follower.found) state.prayer = 'surah';
+  // Gone quiet after the surah, not placed for a while: rukuʿ, then the next rakaah
+  if (state.prayer === 'surah' && follower.found && state.readingAyah === null) {
+    const now = performance.now();
+    if (now - listeningSince() > RAKAAH_QUIET * 1000 && listener.soundSince(now - RAKAAH_QUIET * 1000) <= RAKAAH_SOUND) expectFatiha();
+  }
+}
+
+// Prayer mode, just after Al-Fatiha: a match in it is the audio from before, not a new rakaah
+function fatihaAgain(match) {
+  return state.prayer === 'surah' && !follower.found && match.surah === FATIHA && performance.now() - state.prayerAt < FATIHA_AGAIN_AFTER * 1000;
 }
 
 function stop() {
@@ -216,6 +301,7 @@ function stop() {
   state.session++;
   state.following = false;
   state.readOnFind = false;
+  state.prayer = null;
   clearTimeout(state.timer);
   state.busy = false;
   els.source.disabled = false;
@@ -262,6 +348,14 @@ async function attempt() {
     if (since < FIRST_TRY_AFTER) return schedule(FIRST_TRY_AFTER - since);
     seconds = Math.min(seconds, since);
   }
+  // Masjid mode: more to go on, while it's still looking
+  if (settings.get('masjidMode') && !follower.found) seconds = Math.max(seconds, Math.min(MASJID_CLIP, listener.bufferedSeconds));
+  // Prayer mode, looking for the surah: only what came after Al-Fatiha
+  if (state.prayer === 'surah' && !follower.found) {
+    const since = (performance.now() - state.prayerAt) / 1000;
+    if (since < FIRST_TRY_AFTER) return schedule(FIRST_TRY_AFTER - since);
+    seconds = Math.min(seconds, since);
+  }
 
   state.busy = true;
   try {
@@ -272,18 +366,29 @@ async function attempt() {
     const warm = state.quranReady && !state.loadingModel; // the model's loaded: this check's time is its own
     await warmUpQuran();
     if (session !== state.session) return;
-    const match = await api.recognizeQuran(clip.pcm, follower.word ?? state.searchFrom, state.scope);
+    const match = await api.recognizeQuran(clip.pcm, follower.word ?? state.searchFrom, state.scope, { fatiha: state.prayer === 'fatiha' && !follower.found });
     if (session !== state.session) return;
     state.errors = 0;
     if (warm) {
       const took = (performance.now() - clip.endedAt) / 1000;
       state.checkSeconds = state.checkSeconds === null ? took : state.checkSeconds + CHECK_MEMORY * (took - state.checkSeconds);
     }
-    if (!match) return miss('No ayah matched yet');
+    if (!match || fatihaAgain(match)) return miss('No ayah matched yet');
     if (match.basmala || match.afterBasmala) {
       // A surah's beginning: on its own it hears the reciter, but not where (nearly every surah starts so)
       state.basmalaAt = clip.endedAt;
       state.basmalaReciting = clip.recitingSeconds;
+    }
+    // Prayer mode: the Basmala, before anything else, is Al-Fatiha's first ayah. Its translation
+    // can be read now, rather than once enough of it has been heard to be sure where it is.
+    if (match.basmala && state.prayer === 'fatiha' && !follower.found) {
+      state.note = 'Al-Fatiha has started';
+      state.placed = true;
+      if (state.readOnFind && state.surah?.number === FATIHA && state.surah.verses) {
+        state.readOnFind = false;
+        startReading(1);
+      }
+      return schedule(SEARCH_EVERY);
     }
     if (match.basmala) {
       state.note = 'A surah is starting';
@@ -322,9 +427,15 @@ function onVerse(match, clip) {
   const target = follower.take(match, clip.endedAt);
   state.note = '';
   if (!target) return schedule(nextDelay()); // following, and a phrase from elsewhere that could be either: stay put
+  // Prayer mode, after Al-Fatiha: a guess at the surah stays off the screen, which is still
+  // reading Al-Fatiha's translation, until it's sure
+  if (!wasFound && state.prayer === 'surah' && target.unsure) {
+    state.note = 'Not sure which surah yet';
+    return schedule(SEARCH_EVERY);
+  }
   // A passage that's in more than one place: show the best guess dimmed and keep
   // listening until the reciter says something that settles it (or we run out of patience).
-  state.unsure = target.unsure && performance.now() - state.listenStartedAt < settings.get('giveUpAfter') * 1000;
+  state.unsure = target.unsure && performance.now() - state.listenStartedAt < giveUpAfter() * 1000;
   if (!target.unsure) {
     state.heardAt = performance.now();
     state.heardReciting = clip.recitingSeconds;
@@ -339,6 +450,13 @@ function onVerse(match, clip) {
       return schedule(nextDelay());
     }
     state.handover = null; // somewhere else again
+  }
+  // Prayer mode, the surah after Al-Fatiha: its translation is still being read, so that's finished first
+  if (!wasFound && state.prayer === 'surah' && state.reading && state.readingAyah !== null && state.surah?.number === FATIHA && state.surah.verses && target.surah !== FATIHA) {
+    state.handover = { surah: target.surah, ayah: target.ayah, ayahs: match.surahAyahs, from: fromTheTop(match, clip) ? 1 : target.ayah, until: state.surah.verses.length, via: [] };
+    readOn();
+    setStatus('following');
+    return schedule(nextDelay());
   }
   if (wasFound && !target.unsure && state.following && state.reading && settings.get('readEveryAyah') && state.surah?.verses && target.surah !== state.surah.number) {
     setStatus('following');
@@ -356,7 +474,7 @@ function onVerse(match, clip) {
     if (jumped) state.lastRead = null;
     // Reading that's behind the reciter keeps the verse being read in view instead.
     setAyah(ayah, !(state.following && wasFound) ? true : readingLeads() ? false : 'follow');
-  } else showSurah(target.surah, target.ayah);
+  } else showSurah(target.surah, target.ayah, fromTheTop(match, clip) ? 1 : null);
   const startsReading = state.readOnFind && !state.unsure && !state.reading;
   if (!state.unsure) state.readOnFind = false;
   if (startsReading) startReading(fromTheTop(match, clip) ? 1 : undefined);
@@ -423,7 +541,12 @@ function nearItsEnd(surah, ayah) {
  * (Al-Fatiha, found at its fourth ayah after its Basmala, is 14 words in).
  */
 function fromTheTop(match, clip) {
-  if (match.ayah <= 1 || state.basmalaAt < state.listenStartedAt) return false;
+  if (match.ayah <= 1) return false;
+  // Prayer mode: Al-Fatiha is recited from its start, and a surah after it may be too, if
+  // there's been time to get this far into it since Al-Fatiha
+  if (state.prayer && match.surah === FATIHA) return true;
+  if (state.prayer === 'surah' && match.word - match.surahStart + 1 <= follower.reachIn(clip.recitingSeconds - state.prayerReciting)) return true;
+  if (state.basmalaAt < state.listenStartedAt) return false;
   return match.word - match.surahStart + 1 <= follower.reachIn(clip.recitingSeconds - state.basmalaReciting);
 }
 
@@ -481,6 +604,7 @@ function handOver(match, was, clip, target) {
   const plan = {
     surah: target.surah,
     ayah: target.ayah,
+    ayahs: match.surahAyahs, // how many it has
     from: via || spans || basmala || (finished ? left : 0) + into <= could ? 1 : target.ayah,
     until: finished ? from.verses.length : ayahOfWord(from, was.word),
     via: via ? Array.from({ length: skipped }, (_, i) => from.number + 1 + i) : [], // the surahs in between, to read on the way
@@ -563,11 +687,17 @@ function miss(reason) {
   state.note = reason;
   state.missed++;
   // Give up after a while without finding the reciter (or, following, without hearing them).
-  if (performance.now() - listeningSince() > settings.get('giveUpAfter') * 1000) {
+  if (performance.now() - listeningSince() > giveUpAfter() * 1000) {
     state.note = follower.found ? 'Lost the reciter' : 'Couldn’t find the ayah';
     return stop();
   }
   schedule(nextDelay());
+}
+
+function giveUpAfter() {
+  const seconds = settings.get('giveUpAfter');
+  if (state.prayer) return Math.max(seconds, PRAYER_GIVE_UP);
+  return settings.get('masjidMode') ? Math.max(seconds, MASJID_GIVE_UP) : seconds;
 }
 
 function nextDelay() {
@@ -916,6 +1046,7 @@ function frame() {
     const ayah = follower.reckon(performance.now(), state.surah.verses, turnaround());
     if (ayah > state.ayah) moveAlong(ayah);
   }
+  prayerStep();
   // The next ayah to read, once the reciter carries on to it
   if (state.awaiting !== null && state.following && state.reading && state.readingAyah === null && reached(state.awaiting)) {
     const next = nextToRead();
@@ -927,11 +1058,18 @@ function frame() {
 
 function statusText() {
   if (state.loadingModel) return modelLoadingText();
+  // Too noisy to pick the reciter out, while that's what's keeping it from placing them
+  const noisy = listener.tooNoisy && (!follower.found || state.unsure || lost()) ? ' · Too noisy here: move nearer the speaker' : '';
+  return placeText() + noisy;
+}
+
+function placeText() {
   if (state.unsure) return 'This passage is in more than one place. Listening a bit more…';
   if (state.following && follower.found && state.handover && state.surah?.verses) {
     const { surah, until } = state.handover;
     const rest = until >= state.surah.verses.length ? 'to its end' : `up to ayah ${until}`;
-    return `Following: on to ${surahName(surah)}, ayah ${follower.at.ayah} · Reading ${state.surah.englishName} ${rest} first`;
+    // (the follower goes one past the last ayah once it's finished)
+    return `Following: on to ${surahName(surah)}, ayah ${Math.min(follower.at.ayah, state.handover.ayahs ?? Infinity)} · Reading ${state.surah.englishName} ${rest} first`;
   }
   if (state.following && follower.found) {
     const place = state.surah?.verses ? `: ${state.surah.englishName}, ayah ${state.ayah}` : '';
@@ -940,7 +1078,10 @@ function statusText() {
     return `Following${place}${behind ? ` · Reading ayah ${state.readingAyah} (${behind} behind)` : ''}`;
   }
   const where = state.scope && state.surah?.englishName ? ` in ${state.surah.englishName}` : '';
-  return `Listening for the recitation${where}…${state.note ? ` · ${state.note}` : ''}`;
+  const note = state.note ? ` · ${state.note}` : '';
+  if (state.prayer === 'fatiha') return `Prayer: listening for Al-Fatiha…${note}`;
+  if (state.prayer === 'surah') return `Prayer: Al-Fatiha done · listening for the surah after it…${note}`;
+  return `Listening for the recitation${where}…${note}`;
 }
 
 function modelLoadingText() {

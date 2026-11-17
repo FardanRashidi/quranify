@@ -9,28 +9,19 @@
       <stop offset="0" stop-color="#a6f0c0"/>
       <stop offset="1" stop-color="#5cc98a"/>
     </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#7ee0a1" stop-opacity="0.16"/><stop offset="1" stop-color="#7ee0a1" stop-opacity="0"/></radialGradient>
+    <linearGradient id="accm" gradientUnits="userSpaceOnUse" x1="0" y1="90" x2="0" y2="440"><stop offset="0" stop-color="#a6f0c0"/><stop offset="1" stop-color="#5cc98a"/></linearGradient>
   </defs>
   <rect width="1024" height="500" fill="url(#bg)"/>
-  <!-- large faint star, right -->
-  <g fill="none" stroke="#7ee0a1" stroke-opacity="0.10" stroke-width="3" stroke-linejoin="round">
-    <rect x="620" y="60" width="380" height="380" rx="14"/>
-    <rect x="620" y="60" width="380" height="380" rx="14" transform="rotate(45 810 250)"/>
+  <!-- glow and mark, right -->
+  <circle cx="810" cy="250" r="230" fill="url(#glow)"/>
+  <g transform="translate(810 222) scale(0.82) translate(-256 -256)"><g transform="translate(256 256) scale(0.86) translate(-256 -241)">
+    <path d="M156,318 Q222,322 256,366 Q290,322 356,318" fill="none" stroke="url(#accm)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M92,322 Q178,314 256,384 Q334,314 420,322 L256,412 Z" fill="url(#accm)" stroke="url(#accm)" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M72,336 L256,434 L440,336" fill="none" stroke="url(#accm)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="url(#accm)" transform="translate(256 190) scale(1.35) translate(-256 -196)"><rect x="187" y="175" width="18" height="42" rx="9"/><rect x="217" y="151" width="18" height="90" rx="9"/><rect x="247" y="126" width="18" height="140" rx="9"/><rect x="277" y="151" width="18" height="90" rx="9"/><rect x="307" y="175" width="18" height="42" rx="9"/></g>
   </g>
-  <g fill="none" stroke="#7ee0a1" stroke-opacity="0.05" stroke-width="2" stroke-linejoin="round">
-    <rect x="555" y="-5" width="510" height="510" rx="18"/>
-    <rect x="555" y="-5" width="510" height="510" rx="18" transform="rotate(45 810 250)"/>
-  </g>
-  <!-- waveform inside -->
-  <g fill="url(#acc)">
-    <rect x="701" y="232" width="14" height="36" rx="7" opacity="0.5"/>
-    <rect x="729" y="207" width="14" height="86" rx="7" opacity="0.75"/>
-    <rect x="757" y="178" width="14" height="144" rx="7"/>
-    <rect x="785" y="200" width="14" height="100" rx="7"/>
-    <rect x="813" y="160" width="14" height="180" rx="7"/>
-    <rect x="841" y="196" width="14" height="108" rx="7"/>
-    <rect x="869" y="215" width="14" height="70" rx="7" opacity="0.75"/>
-    <rect x="897" y="234" width="14" height="32" rx="7" opacity="0.5"/>
-  </g>
+</g>
   <!-- text -->
   <g font-family="Adwaita Sans">
     <text x="84" y="208" font-size="20" font-weight="600" letter-spacing="4" fill="#7ee0a1">LISTEN · FIND · FOLLOW</text>

@@ -45,6 +45,8 @@ export const DEFAULTS = Object.freeze({
   microphone: '', // a deviceId, or '' for the default
   clipSeconds: 8, // how much recent audio each attempt sends
   giveUpAfter: 60, // seconds of listening without finding anything
+  masjidMode: false, // a big echoing room: searches hear more, and it keeps trying for longer
+  prayerMode: false, // listening to a prayer: Al-Fatiha first, then a surah, each rakaah
 });
 
 /** textSize's choices, for the settings panel and the tutorial */

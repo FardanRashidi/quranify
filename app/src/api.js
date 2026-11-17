@@ -13,10 +13,11 @@ const SavedVoice = registerPlugin('SavedVoice');
 /**
  * @param {number | null | undefined} near word index of the last match, to keep following from there
  * @param {number | null | undefined} surah only look in this surah
+ * @param {{ fatiha?: boolean }} [options] Al-Fatiha is expected: see lib/quran.js's locate
  */
-export async function recognizeQuran(pcm, near, surah) {
+export async function recognizeQuran(pcm, near, surah, options = {}) {
   const transcript = await transcribe(pcm);
-  return (await quran.locate(transcript, near ?? null, surah ?? null)) ?? (isBasmala(transcript) ? { basmala: true } : null);
+  return (await quran.locate(transcript, near ?? null, surah ?? null, options)) ?? (isBasmala(transcript) ? { basmala: true } : null);
 }
 
 /**

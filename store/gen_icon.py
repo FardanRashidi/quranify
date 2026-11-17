@@ -1,0 +1,32 @@
+import sys
+DEFS='''<defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%"><stop offset="0" stop-color="#16231d"/><stop offset="0.55" stop-color="#0e1419"/><stop offset="1" stop-color="#0a0d11"/></radialGradient>
+    <linearGradient id="acc" gradientUnits="userSpaceOnUse" x1="0" y1="90" x2="0" y2="440"><stop offset="0" stop-color="#a6f0c0"/><stop offset="1" stop-color="#5cc98a"/></linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#7ee0a1" stop-opacity="0.18"/><stop offset="1" stop-color="#7ee0a1" stop-opacity="0"/></radialGradient>
+  </defs>'''
+BG='''<rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="210" fill="url(#glow)"/>'''
+MARK='''<path transform="translate(0 -32)" d="M92.6,300.0 H161.5 C146.2,261.9 138.5,212.6 159.0,176.8 C179.4,143.2 230.5,129.8 245.8,102.9 C249.6,95.0 253.4,87.2 256.0,76.0 C258.6,87.2 262.4,95.0 266.2,102.9 C281.5,129.8 332.6,143.2 353.0,176.8 C373.5,212.6 365.8,261.9 350.5,300.0 H419.4" fill="none" stroke="url(#acc)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M156,318 Q222,322 256,366 Q290,322 356,318" fill="none" stroke="url(#acc)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M92,322 Q178,314 256,384 Q334,314 420,322 L256,412 Z" fill="url(#acc)" stroke="url(#acc)" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M72,336 L256,434 L440,336" fill="none" stroke="url(#acc)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>'''
+BARS='''<g fill="url(#acc)"><rect x="187" y="175" width="18" height="42" rx="9"/><rect x="217" y="151" width="18" height="90" rx="9"/><rect x="247" y="126" width="18" height="140" rx="9"/><rect x="277" y="151" width="18" height="90" rx="9"/><rect x="307" y="175" width="18" height="42" rx="9"/></g>'''
+STAR='''<g fill="none" stroke="url(#acc)" stroke-width="10" stroke-linejoin="round" transform="translate(256 228) scale(0.5) translate(-256 -256)">
+      <rect x="148" y="148" width="216" height="216" rx="10"/><rect x="148" y="148" width="216" height="216" rx="10" transform="rotate(45 256 256)"/>
+    </g>
+    <g fill="url(#acc)">
+      <rect x="226" y="219" width="9" height="18" rx="4.5"/><rect x="240" y="207" width="9" height="42" rx="4.5"/>
+      <rect x="253.5" y="196" width="9" height="64" rx="4.5"/><rect x="267" y="207" width="9" height="42" rx="4.5"/>
+      <rect x="281" y="219" width="9" height="18" rx="4.5"/>
+    </g>'''
+# argv: variant(bars|star) mode(full|fg) scale
+v, mode, sc = sys.argv[1], sys.argv[2], float(sys.argv[3])
+inner = BARS if v == 'bars' else STAR
+print(f'''<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  {DEFS}
+  {BG if mode == 'full' else ''}
+  <g transform="translate(256 256) scale({sc}) translate(-256 -241)">
+    {MARK}
+    {inner}
+  </g>
+</svg>''')

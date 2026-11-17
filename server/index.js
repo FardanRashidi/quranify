@@ -48,7 +48,7 @@ async function handle(req, res) {
       const near = url.searchParams.has('near') ? Number(url.searchParams.get('near')) : null;
       const surah = url.searchParams.has('surah') ? Number(url.searchParams.get('surah')) : null;
       if (surah !== null && !(Number.isInteger(surah) && surah >= 1 && surah <= 114)) return sendJson(res, 400, { error: 'No such surah' });
-      const match = await locate(transcript, near, surah);
+      const match = await locate(transcript, near, surah, { fatiha: url.searchParams.get('fatiha') === '1' });
       return sendJson(res, 200, { match, transcript, basmala: match === null && isBasmala(transcript) });
     }
     if (url.pathname === '/api/quran/surahs' && req.method === 'GET') {
