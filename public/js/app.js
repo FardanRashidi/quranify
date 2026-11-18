@@ -14,6 +14,7 @@ const FIRST_TRY_AFTER = 4; // seconds of audio to collect before the first attem
 // sooner. In testing it found them within 7 s 66% of the time, against 55% for
 // the whole Quran with the first try at 4 s.
 const FIRST_TRY_IN_SURAH = 2.5;
+const TICK_HIDDEN = 100; // ms between tick()s with the screen off, when there are no frames to run them
 const SEARCH_EVERY = 1; // checks run locally, so try again straight away
 // Errors in a row double the wait, from the first to the second.
 const RETRY_AFTER_ERROR = 10;
@@ -163,6 +164,8 @@ const state = {
   busy: false,
   syncQueued: false,
   timer: null,
+  dueAt: Infinity, // when the scheduled attempt is due (performance.now()), for the audio to run it with the screen off
+  tickedAt: -Infinity, // when tick() last ran
   // reading aloud
   reading: false, // reading the translation aloud, ayah after ayah
   readingAyah: null, // the ayah being read; null between ayahs (waiting for the reciter to reach the next)
@@ -202,6 +205,7 @@ async function start(follow = settings.get('listenFollow')) {
   listener.onEnded = stop;
   listener.onPause = onPause;
   listener.isDeaf = voiceSpeaking;
+  listener.onChunk = onChunk;
   state.session++;
   state.following = follow;
   state.lastRead = null;
@@ -302,7 +306,7 @@ function stop() {
   state.following = false;
   state.readOnFind = false;
   state.prayer = null;
-  clearTimeout(state.timer);
+  unschedule();
   state.busy = false;
   els.source.disabled = false;
   for (const bar of els.meter.children) bar.removeAttribute('style');
@@ -326,13 +330,32 @@ function syncNow() {
     state.syncQueued = true;
     return;
   }
-  clearTimeout(state.timer);
+  unschedule();
   attempt();
 }
 
 function schedule(seconds) {
+  unschedule();
+  state.dueAt = performance.now() + seconds * 1000;
+  state.timer = setTimeout(due, seconds * 1000);
+}
+
+function unschedule() {
   clearTimeout(state.timer);
-  state.timer = setTimeout(attempt, seconds * 1000);
+  state.dueAt = Infinity;
+}
+
+function due() {
+  unschedule();
+  attempt();
+}
+
+// With the page hidden (the screen off), the browser holds timers back and stops
+// drawing frames, but the audio keeps coming: it runs what's due instead.
+function onChunk() {
+  const now = performance.now();
+  if (now >= state.dueAt) due();
+  if (document.visibilityState === 'hidden' && now - state.tickedAt >= TICK_HIDDEN) tick();
 }
 
 async function attempt() {
@@ -903,10 +926,20 @@ function renderReading() {
 }
 
 // Keep the screen on while listening or reading aloud: nobody's touching it then.
-// And in the app, keep listening if the screen goes off anyway.
+// And in the app, keep going if the screen goes off anyway, saying so in a notification.
 function updateWakeLock() {
   api.keepScreenOn(listener.active || state.reading);
-  api.keepListening(listener.active);
+  api.keepRunning(listener.active, state.reading, backgroundText());
+}
+
+// What that notification says: where it's got to.
+function backgroundText() {
+  const surah = state.surah;
+  const ayah = state.reading && state.readingAyah !== null ? state.readingAyah : state.ayah;
+  const where = surah?.verses && ayah ? `${surah.englishName}, ayah ${ayah} of ${surah.verses.length}` : '';
+  if (!listener.active) return where ? `Reading ${where}` : '';
+  if (!where || !state.placed) return 'Listening for the recitation';
+  return state.following ? `Following ${where}` : `Found ${where}`;
 }
 
 // --- rendering --------------------------------------------------------------
@@ -1034,7 +1067,7 @@ function step(direction) {
 function frame() {
   if (!listener.active) return;
   requestAnimationFrame(frame);
-
+  tick();
   if (settings.get('meter')) {
     // Each bar as tall as it's loud, and red for as much of it as is the background (style.css)
     listener.levels().forEach(({ level, noise }, i) => {
@@ -1043,6 +1076,12 @@ function frame() {
       bar.style.setProperty('--noise', noise.toFixed(2));
     });
   }
+}
+
+// What happens between checks: each frame, or with the screen off, from onChunk.
+function tick() {
+  if (!listener.active) return;
+  state.tickedAt = performance.now();
   // Through short ayahs, on by the reciter's pace between checks
   if (state.following && follower.found && !state.unsure && !state.handover && state.surah?.verses && state.surah.number === follower.at.surah) {
     const ayah = follower.reckon(performance.now(), state.surah.verses, turnaround());
@@ -1135,6 +1174,7 @@ function listenDoes() {
 }
 
 function renderAyah() {
+  updateWakeLock(); // the notification says where it's got to
   els.ayahControls.hidden = !state.surah;
   // "Ayah " goes when the screen's too narrow for it (see style.css)
   const word = Object.assign(document.createElement('span'), { className: 'word', textContent: 'Ayah ' });
@@ -1270,6 +1310,12 @@ els.ayahUp.addEventListener('click', () => step(1));
 versesView.onSelect = (index) => {
   if (state.surah?.verses) goTo(index + 1, false);
 };
+// The notification's Stop, with the screen off (or the app in the background)
+api.onStopFromNotification(() => {
+  if (listener.active) stop();
+  if (state.reading) stopReading();
+});
+
 // The app opened from one of auto search's notifications: show what it heard.
 api.onOpenAyah(({ surah, ayah }) => {
   if (listener.active) stop();

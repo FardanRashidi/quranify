@@ -35,8 +35,8 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onDestroy() {
-        // The page that was listening is gone: so is the reason to keep the microphone
-        if (isFinishing()) ListeningService.stop(this);
+        // The page that was listening or reading is gone: so is the reason to keep going
+        if (isFinishing()) BackgroundService.stop(this);
         super.onDestroy();
     }
 }

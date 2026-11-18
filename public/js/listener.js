@@ -74,6 +74,11 @@ export class Listener {
    * through the speaker: then it doesn't measure the sound, or find pauses in it.
    */
   isDeaf = null;
+  /**
+   * Called for each batch of audio, about every 40 ms. Unlike timers and frames, these keep
+   * coming on time with the page hidden (the screen off), so they can keep time then.
+   */
+  onChunk = null;
 
   #stream = null;
   #ctx = null;
@@ -319,6 +324,7 @@ export class Listener {
     this.#written += chunk.length;
     this.#lastChunkAt = performance.now();
     this.#listenForPause(chunk);
+    if (this.#ctx) this.onChunk?.();
   }
 
   // Each batch from the worklet is about 40 ms.

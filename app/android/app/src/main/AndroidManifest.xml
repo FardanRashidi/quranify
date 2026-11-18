@@ -31,11 +31,11 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
-        <!-- Keeps the page's Listen going with the screen off: see ListeningService.java -->
+        <!-- Keeps the page's Listen and Read aloud going with the screen off: see BackgroundService.java -->
         <service
-            android:name=".ListeningService"
+            android:name=".BackgroundService"
             android:exported="false"
-            android:foregroundServiceType="microphone" />
+            android:foregroundServiceType="microphone|mediaPlayback" />
 
         <service
             android:name=".AutoSearchTile"
@@ -85,6 +85,7 @@
     <!-- auto search -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>

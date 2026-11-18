@@ -51,13 +51,23 @@ export function keepScreenOn(on) {
   Screen.keepOn({ on }).catch((err) => console.warn(err));
 }
 
-let listening = false;
+let running = '';
 
-/** While Listen is on: keeps the microphone going with the screen off (ListeningService.java). */
-export function keepListening(on) {
-  if (on === listening || !Capacitor.isNativePlatform()) return;
-  listening = on;
-  Screen.keepListening({ on }).catch((err) => console.warn(err));
+/**
+ * While listening or reading aloud: keeps them going with the screen off, with a
+ * notification saying so (BackgroundService.java). `text` is what it says.
+ */
+export function keepRunning(listening, reading, text) {
+  if (!Capacitor.isNativePlatform()) return;
+  const now = JSON.stringify(listening || reading ? { listening, reading, text } : {});
+  if (now === running) return;
+  running = now;
+  Screen.keepRunning({ listening, reading, text }).catch((err) => console.warn(err));
+}
+
+/** Calls back when the notification's Stop is pressed. */
+export function onStopFromNotification(callback) {
+  if (Capacitor.isNativePlatform()) Screen.addListener('stop', callback);
 }
 
 /**

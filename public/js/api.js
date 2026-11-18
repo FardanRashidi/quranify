@@ -82,8 +82,9 @@ export function keepScreenOn(on) {
 
 document.addEventListener('visibilitychange', () => keepScreenOn(screenOn));
 
-/** Only the app can keep listening with the screen off (app/src/api.js). */
-export function keepListening() {}
+/** Only the app keeps listening and reading with the screen off (app/src/api.js). */
+export function keepRunning() {}
+export function onStopFromNotification() {}
 
 async function parse(res) {
   const body = await res.json().catch(() => ({}));
