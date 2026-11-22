@@ -6,14 +6,15 @@ const API_BASE = '';
 /**
  * @param {ArrayBuffer} pcm 16 kHz mono s16le audio
  * @param {number | null | undefined} near word index of the last match, to keep following from there
- * @param {number | null | undefined} surah only look in this surah
+ * @param {{ surah?: number, juz?: number } | null | undefined} scope only look in this surah, or this juz
  * @param {{ fatiha?: boolean }} [options] Al-Fatiha is expected: see lib/quran.js's locate
  * @returns {Promise<object | null>} the match from locate(), or { basmala: true } for the Basmala on its own, or null
  */
-export async function recognizeQuran(pcm, near, surah, { fatiha = false } = {}) {
+export async function recognizeQuran(pcm, near, scope, { fatiha = false } = {}) {
   const params = new URLSearchParams();
   if (near != null) params.set('near', near);
-  if (surah != null) params.set('surah', surah);
+  if (scope?.surah) params.set('surah', scope.surah);
+  else if (scope?.juz) params.set('juz', scope.juz);
   if (fatiha) params.set('fatiha', '1');
   const query = params.size ? `?${params}` : '';
   const res = await fetch(`${API_BASE}/api/quran/recognize${query}`, {
@@ -36,6 +37,11 @@ export async function warmUpQuran() {
 /** Every surah, for choosing one: { number, name, englishName, englishNameTranslation, revelationType, ayahs }. */
 export async function fetchSurahs() {
   return (await parse(await fetch(`${API_BASE}/api/quran/surahs`))).surahs;
+}
+
+/** The 30 juz, for choosing one: { number, start: { surah, ayah }, end: { surah, ayah }, ayahs, opening }. */
+export async function fetchJuz() {
+  return (await parse(await fetch(`${API_BASE}/api/quran/juz`))).juz;
 }
 
 export async function fetchSurah(number, translation) {

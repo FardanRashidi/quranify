@@ -10,7 +10,7 @@ import * as settings from './settings.js';
 import * as api from './api.js';
 
 const FIRST_TRY_AFTER = 4; // seconds of audio to collect before the first attempt
-// Looking in one surah, fewer words are enough to place the reciter, so it tries
+// Looking in one surah (or juz), fewer words are enough to place the reciter, so it tries
 // sooner. In testing it found them within 7 s 66% of the time, against 55% for
 // the whole Quran with the first try at 4 s.
 const FIRST_TRY_IN_SURAH = 2.5;
@@ -141,7 +141,9 @@ const state = {
   surah: null, // the surah on screen ({ number } while it loads)
   ayah: null, // the highlighted ayah
   placed: false, // the highlighted ayah is where the reader is (found, or moved to), not just the start of a surah they opened
-  scope: null, // the surah Listen looks in, when it's to look in just one ("this surah only")
+  // Where Listen looks, when it's to look in just one surah ({ surah }: "this surah only") or
+  // juz ({ juz, start, end }: its number, and its first and last { surah, ayah }); null for the whole Quran
+  scope: null,
   // listening
   source: 'mic', // what's being listened to: mic | tab
   following: false, // keep listening once the reciter is found, and move along with them
@@ -653,7 +655,7 @@ async function lookBackFor(plan, from, was, clip, topAlone) {
   try {
     const audio = await listener.clip(seconds, endAt);
     if (audio.audible < MIN_AUDIBLE_IN_SURAH || state.handover !== plan) return;
-    const heard = await api.recognizeQuran(audio.pcm, was.word, from.number);
+    const heard = await api.recognizeQuran(audio.pcm, was.word, { surah: from.number });
     if (!heard || heard.basmala || state.handover !== plan || state.surah !== from) return;
     const last = from.verses.at(-1);
     if (heard.word >= last.firstWord + last.words - 2) return; // they got to its end (or all but the last word)
@@ -957,9 +959,18 @@ function reset() {
 
 /** A surah chosen from the list: open it (at the start, or where auto search heard it), to read, and to listen in. */
 function pickSurah(number, ayah = 1) {
+  openChosen(number, ayah, { surah: number });
+}
+
+/** A juz chosen from the list (as api.fetchJuz() gives it): open it at its first ayah, to read, and to listen in, in any of its surahs. */
+function pickJuz(juz) {
+  openChosen(juz.start.surah, juz.start.ayah, { juz: juz.number, start: juz.start, end: juz.end });
+}
+
+function openChosen(number, ayah, scope) {
   if (listener.active) stop();
   if (state.reading) stopReading();
-  state.scope = number;
+  state.scope = scope;
   state.placed = false;
   state.note = ''; // about the last listen, not this surah
   if (state.surah?.number === number && state.surah.verses) setAyah(ayah, true);
@@ -967,10 +978,24 @@ function pickSurah(number, ayah = 1) {
   renderScope();
 }
 
-// "this surah only": whether Listen looks in the surah on screen, or the whole Quran.
+// Whether surah `number` is in where Listen's to look: any is, in the whole Quran.
+function inScope(number) {
+  const scope = state.scope;
+  if (scope?.juz) return number >= scope.start.surah && number <= scope.end.surah;
+  return !scope || scope.surah === number;
+}
+
+// What Listen's to look in, for the status line and its tooltip: "this surah" or "Juz 2"
+function scopeName() {
+  return state.scope?.juz ? `Juz ${state.scope.juz}` : 'this surah';
+}
+
+// "this surah only" (or "Juz 2 only", chosen from the list): whether Listen looks there, or in the whole Quran.
 function renderScope() {
   els.scope.hidden = !state.surah;
-  els.scope.setAttribute('aria-pressed', String(Boolean(state.surah) && state.scope === state.surah.number));
+  els.scope.setAttribute('aria-pressed', String(Boolean(state.surah && state.scope) && inScope(state.surah.number)));
+  els.scope.textContent = `Search ${scopeName()} only`;
+  els.scope.title = `Listen looks for the reciter in ${scopeName()} only`;
   renderListenButtons();
 }
 
@@ -980,7 +1005,7 @@ async function showSurah(number, ayah, readFrom = null) {
   state.surah = placeholder; // so further matches in this surah don't refetch it
   state.ayah = ayah;
   state.lastRead = null; // reading starts again where the reciter is
-  if (state.scope !== number) state.scope = null; // that was about another surah
+  if (!inScope(number)) state.scope = null; // that was about another surah, or juz
   renderScope();
   renderReading();
   if (state.reading) pauseReading(); // its verse is going; it starts again once the surah's loaded
@@ -1118,7 +1143,7 @@ function placeText() {
     const behind = readingBehind();
     return `Following${place}${behind ? ` · Reading ayah ${state.readingAyah} (${behind} behind)` : ''}`;
   }
-  const where = state.scope && state.surah?.englishName ? ` in ${state.surah.englishName}` : '';
+  const where = state.scope?.juz ? ` in ${scopeName()}` : state.scope && state.surah?.englishName ? ` in ${state.surah.englishName}` : '';
   const note = state.note ? ` · ${state.note}` : '';
   if (state.prayer === 'fatiha') return `Prayer: listening for Al-Fatiha…${note}`;
   if (state.prayer === 'surah') return `Prayer: Al-Fatiha done · listening for the surah after it…${note}`;
@@ -1160,7 +1185,7 @@ function renderListenButtons() {
   els.listenLabel.textContent = listener.active ? 'Stop' : 'Listen';
   els.listenSub.textContent = !listener.active ? '' : state.status === 'following' ? 'Following' : 'Listening…';
   els.listen.classList.toggle('listening', listener.active);
-  const does = listenDoes() + (state.scope ? ' (in this surah only)' : '');
+  const does = listenDoes() + (state.scope ? ` (in ${scopeName()} only)` : '');
   els.listen.title = `Listen and ${does}  ( space )`;
   updateWakeLock();
 }
@@ -1282,8 +1307,11 @@ els.source.addEventListener('change', () => settings.set('source', els.source.va
 els.read.addEventListener('click', toggleReading);
 els.readSpeed.addEventListener('click', nextSpeed);
 els.openSettings.addEventListener('click', () => settingsPanel.show());
-els.openSurahs.addEventListener('click', () => surahPicker.show(state.surah?.number ?? null));
+// Where the reader is, for the surah list to mark
+const here = () => (state.surah ? { surah: state.surah.number, ayah: state.ayah ?? 1 } : null);
+els.openSurahs.addEventListener('click', () => surahPicker.show(here()));
 surahPicker.onPick = pickSurah;
+surahPicker.onPickJuz = pickJuz;
 settingsPanel.onTutorial = () => tutorial.show();
 settingsPanel.sound = {
   get active() {
@@ -1296,10 +1324,11 @@ settingsPanel.sound = {
     return listener.soundLog;
   },
 };
-settingsPanel.onHistory = () => surahPicker.show(state.surah?.number ?? null, 'heard');
+settingsPanel.onHistory = () => surahPicker.show(here(), 'heard');
+// Ticked, it's off again (to the whole Quran, from a juz as well); unticked, it's this surah
 els.scope.addEventListener('click', () => {
   if (!state.surah) return;
-  state.scope = state.scope === state.surah.number ? null : state.surah.number;
+  state.scope = state.scope && inScope(state.surah.number) ? null : { surah: state.surah.number };
   renderScope();
 });
 settings.onChange(applySetting);

@@ -12,12 +12,13 @@ const SavedVoice = registerPlugin('SavedVoice');
 
 /**
  * @param {number | null | undefined} near word index of the last match, to keep following from there
- * @param {number | null | undefined} surah only look in this surah
+ * @param {{ surah?: number, juz?: number } | null | undefined} scope only look in this surah, or this juz
  * @param {{ fatiha?: boolean }} [options] Al-Fatiha is expected: see lib/quran.js's locate
  */
-export async function recognizeQuran(pcm, near, surah, options = {}) {
+export async function recognizeQuran(pcm, near, scope, options = {}) {
   const transcript = await transcribe(pcm);
-  return (await quran.locate(transcript, near ?? null, surah ?? null, options)) ?? (isBasmala(transcript) ? { basmala: true } : null);
+  const only = scope?.surah ? { surah: scope.surah } : scope?.juz ? { juz: scope.juz } : null;
+  return (await quran.locate(transcript, near ?? null, only, options)) ?? (isBasmala(transcript) ? { basmala: true } : null);
 }
 
 /**
@@ -30,6 +31,10 @@ export async function warmUpQuran(onProgress) {
 
 export function fetchSurahs() {
   return quran.listSurahs();
+}
+
+export function fetchJuz() {
+  return quran.listJuz();
 }
 
 export function fetchSurah(number, translation) {

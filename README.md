@@ -22,9 +22,9 @@ the reciter** under **listening**, **read aloud when Listen finds the ayah**
 under **translation and voice**). Then Listen just finds your place and stops
 listening, or finds it and reads on through the surah by itself.
 
-You can also [choose a surah](#choosing-a-surah) from a list, to read it, have
-its translation read aloud, or have Listen look for the reciter in that surah
-only, which finds them sooner.
+You can also [choose a surah](#choosing-a-surah) (or a juz) from a list, to
+read it, have its translation read aloud, or have Listen look for the reciter
+in that surah or juz only, which finds them sooner.
 
 It's made to be easy to use, older eyes and hands included: big buttons at the
 bottom of the screen with words on them, plain messages, and a text size
@@ -270,7 +270,19 @@ With **Search this surah only** ticked, following stops at the end of the
 surah: it won't look for the reciter in the next one. When Listen finds a
 surah by itself, it isn't ticked.
 
-In the app, the list has a second tab, **Heard**: the surahs
+The **Juz** tab lists the 30 juz the same way: each one's first words in
+Arabic, and where it runs from and to (*Al-Baqara 142–252*, *Yaseen 28 –
+Az-Zumar 31*), as the Madinah mushaf divides them. Type a juz's number, its
+first words (`تبارك`), or a surah in it (`yaseen` lists juz 22 and 23).
+Choosing one opens it at its first ayah, with **Search Juz 23 only** ticked
+under the surah's name: Listen then looks for the reciter anywhere in that
+juz, across its surahs, and following goes on from one surah to the next
+inside it, but stops at the end of the juz. Tap it to look in the whole Quran
+again (tapped again, it's this surah only). The juz stays chosen while the
+surah on screen is in it; opening one outside it drops it. The list opens on
+whichever tab, surahs or juz, was used last, at the one you're in.
+
+In the app, the list has a third tab, **Heard**: the surahs
 [auto search](#auto-search) has heard, newest first, under *Today*,
 *Yesterday* or the date. Each shows the ayahs it heard and when (*Ayahs 1–12 ·
 11:05 AM*), and opens at the first of them. **Clear the history** (tap it
@@ -615,11 +627,12 @@ microphone or tab audio
  │ clip(): last 8 s → 16 kHz mono PCM
  │
  ├── POST /api/quran/recognize?near=N&surah=S ─▶ asr.js: Whisper, on this CPU
- │                                        quran.js: find those words in the Quran (or one surah)
+ │                                        quran.js: find those words in the Quran (or one surah or juz)
  │   ◀─ surah, ayah, word, ambiguous ───
  │      GET /api/quran/surah/:n ────────▶ quran.js ── first run only ──▶ alquran.cloud, quran.com
  │   ◀─ verses + translation ───────────  asr.js ──── first run only ──▶ Hugging Face
  │      GET /api/quran/surahs ──────────▶ quran.js (the surah list)
+ │      GET /api/quran/juz ─────────────▶ quran.js (the juz list)
  │
  └── reader.js ┬ recording.js: Ibrahim Walk's recording ─────────────────▶ cdn.islamic.network
                │   + data/walk-timings.json (when each word is said)          (alquran.cloud's CDN)
@@ -627,7 +640,7 @@ microphone or tab audio
 
 app.js decides when to listen and what to show; follow.js times the checks
 while following; verses-view.js draws the verses and highlights;
-surah-picker.js is the surah list; tutorial.js is the first-run tour.
+surah-picker.js is the surah and juz list; tutorial.js is the first-run tour.
 ```
 
 The browser captures audio, keeps time and reads aloud. The server does the
@@ -781,9 +794,10 @@ every distinct word.
 
 ### Finding the passage
 
-`locate(transcript, near, surah)` works in steps. With `surah`, it looks in
-that surah alone: only its words vote in step 1, and alignments stay inside
-it.
+`locate(transcript, near, scope)` works in steps. With a `scope` of
+`{ surah }` or `{ juz }`, it looks in that surah or juz alone: only its words
+vote in step 1, alignments stay inside it, and after a Basmala only the
+surahs that open inside it count.
 
 First, **the Basmala.** A transcript with one in it (three of its words in
 order, or its last two, each spelt near enough) lines up badly with the surah
@@ -1354,8 +1368,9 @@ the app.
 | Request                                    | Sends                                        | Returns |
 | ------------------------------------------ | -------------------------------------------- | ------- |
 | `POST /api/quran/warmup`                   | nothing                                      | `{ ready: true }` once the model and index are loaded |
-| `POST /api/quran/recognize?near=N&surah=S&fatiha=1` | 16 kHz mono s16le PCM, at most 30 s; `near` (a word's place in the whole Quran), `surah` (1–114, to look in that surah alone) and `fatiha` (Al-Fatiha is expected, so its first ayahs are trusted: prayer mode) are optional | `{ match: { surah, ayah, word, start, ayahEnd, surahStart, surahAyahs, score, ambiguous, continues } or null, transcript, basmala }`. `start` is the word the match starts at, `surahStart` and `surahAyahs` where its surah starts and how many ayahs it has; `basmala` is true when there's no match because the transcript is the Basmala alone |
+| `POST /api/quran/recognize?near=N&surah=S&fatiha=1` | 16 kHz mono s16le PCM, at most 30 s; `near` (a word's place in the whole Quran), `surah` (1–114, to look in that surah alone) or `juz` (1–30, that juz alone) and `fatiha` (Al-Fatiha is expected, so its first ayahs are trusted: prayer mode) are optional | `{ match: { surah, ayah, word, start, ayahEnd, surahStart, surahAyahs, score, ambiguous, continues } or null, transcript, basmala }`. `start` is the word the match starts at, `surahStart` and `surahAyahs` where its surah starts and how many ayahs it has; `basmala` is true when there's no match because the transcript is the Basmala alone |
 | `GET /api/quran/surahs`                    |                                              | `{ surahs: [{ number, name, englishName, englishNameTranslation, revelationType, ayahs }] }`, `ayahs` being how many |
+| `GET /api/quran/juz`                       |                                              | `{ juz: [{ number, start: { surah, ayah }, end: { surah, ayah }, ayahs, opening }] }`: each juz's first and last ayah, how many it has, and its first words |
 | `GET /api/quran/surah/:n?translation=en`   | `translation`: a code from [`translations.js`](public/js/translations.js), or `none` | `{ surah: { number, name, englishName, englishNameTranslation, revelationType, basmala, verses: [{ number, text, segments, translation, firstWord, words }], translationError? } }`; `segments` are `[text, colour]` pieces (see Tajweed colours), `basmala` is the same, or `null` for Al-Fatiha and At-Tawbah, `firstWord` / `words` place each ayah in the index, and `translationError` says why the translation is missing when it couldn't be downloaded |
 | any other `GET`                            |                                              | a file from `public/` |
 
@@ -1805,7 +1820,7 @@ public/
   js/saved-voice.js      the recorded voice saved on the phone: what's saved, saving, deleting, playing a saved ayah
   js/saved-voice-panel.js  the offline voice panel: every surah's size, Save, Stop, Delete
   js/speech.js           the browser's speechSynthesis (the app swaps in app/src/speech.js)
-  js/surah-picker.js     the surah list, and auto search's history (the Heard tab)
+  js/surah-picker.js     the surah and juz lists, and auto search's history (the Heard tab)
   js/settings.js         settings: defaults, saving, change notifications
   js/settings-panel.js   the settings panel
   js/translations.js     the translations: language, edition, translator, voices
@@ -1919,7 +1934,8 @@ Generated and ignored by git: `certs/`, `.cache/`, `dist/`, `node_modules/`,
 - **The recorded voice on an iPhone is untested.** The silent-tap trick is
   there for Safari, but it's only been tried in Chrome and the Android
   emulator's WebView.
-- **Search this surah only** stops following at the end of the surah.
+- **Search this surah only** stops following at the end of the surah, and
+  **Search Juz N only** at the end of the juz.
 - **Tab audio** only works in Chromium-based browsers.
 - **Auto search** is only in the Android app (a web page can't keep listening
   in the background). It hasn't been tried with a real microphone in a room,

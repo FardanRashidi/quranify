@@ -20,4 +20,4 @@ export async function loadEdition(id) {
   return surahs;
 }
 
-export const { locate, getSurah, listSurahs, warmUp } = createQuran(loadEdition);
+export const { locate, getSurah, listSurahs, listJuz, warmUp } = createQuran(loadEdition);

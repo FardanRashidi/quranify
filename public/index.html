@@ -66,7 +66,7 @@
         <button id="read-speed" title="Reading speed">Speed 1×</button>
       </div>
       <nav class="nav">
-        <button id="open-surahs" class="nav-button" title="Choose a surah to read, or to listen for the reciter in">
+        <button id="open-surahs" class="nav-button" title="Choose a surah or juz to read, or to listen for the reciter in">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 7c-2-1.6-5-2-8-1.5v13c3-.5 6-.1 8 1.5 2-1.6 5-2 8-1.5v-13c-3-.5-6-.1-8 1.5z" />
             <path d="M12 7v13" />
@@ -111,10 +111,11 @@
         <button type="button" class="close" aria-label="Close the surah list">×</button>
       </header>
       <div class="settings-body">
-        <!-- In the app: every surah, or the ones auto search has heard -->
-        <div class="tabs" role="tablist" aria-label="Which surahs" hidden>
+        <!-- Every surah, or the 30 juz; in the app, also the surahs auto search has heard -->
+        <div class="tabs" role="tablist" aria-label="Surahs or juz">
           <button role="tab" aria-selected="true" data-tab="all">All surahs</button>
-          <button role="tab" aria-selected="false" data-tab="heard">Heard</button>
+          <button role="tab" aria-selected="false" data-tab="juz">Juz</button>
+          <button role="tab" aria-selected="false" data-tab="heard" hidden>Heard</button>
         </div>
         <input type="search" class="surah-filter" placeholder="Name, meaning or number" aria-label="Find a surah" autocomplete="off" />
         <ol class="surah-list"></ol>

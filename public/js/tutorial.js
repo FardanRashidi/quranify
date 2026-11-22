@@ -32,7 +32,7 @@ const STEPS = [
   {
     target: '#open-surahs',
     title: 'Surahs',
-    text: 'Choose a surah to read it. With a surah open, Read aloud reads its translation, and Listen looks for the reciter in that surah only, which is quicker.',
+    text: 'Choose a surah, or a juz, to read it. With one open, Read aloud reads its translation, and Listen looks for the reciter in that surah or juz only, which is quicker.',
   },
   {
     target: '#ayah-controls',

@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadModel, transcribe } from './asr.js';
-import { locate, getSurah, listSurahs, warmUp, isBasmala } from './quran.js';
+import { locate, getSurah, listSurahs, listJuz, warmUp, isBasmala } from './quran.js';
 import { loadOrCreateCert, lanAddresses } from './tls.js';
 import { versionInfo } from './version.js';
 
@@ -47,12 +47,18 @@ async function handle(req, res) {
       const transcript = await transcribe(audio);
       const near = url.searchParams.has('near') ? Number(url.searchParams.get('near')) : null;
       const surah = url.searchParams.has('surah') ? Number(url.searchParams.get('surah')) : null;
+      const juz = url.searchParams.has('juz') ? Number(url.searchParams.get('juz')) : null;
       if (surah !== null && !(Number.isInteger(surah) && surah >= 1 && surah <= 114)) return sendJson(res, 400, { error: 'No such surah' });
-      const match = await locate(transcript, near, surah, { fatiha: url.searchParams.get('fatiha') === '1' });
+      if (juz !== null && !(Number.isInteger(juz) && juz >= 1 && juz <= 30)) return sendJson(res, 400, { error: 'No such juz' });
+      const scope = surah !== null ? { surah } : juz !== null ? { juz } : null;
+      const match = await locate(transcript, near, scope, { fatiha: url.searchParams.get('fatiha') === '1' });
       return sendJson(res, 200, { match, transcript, basmala: match === null && isBasmala(transcript) });
     }
     if (url.pathname === '/api/quran/surahs' && req.method === 'GET') {
       return sendJson(res, 200, { surahs: await listSurahs() });
+    }
+    if (url.pathname === '/api/quran/juz' && req.method === 'GET') {
+      return sendJson(res, 200, { juz: await listJuz() });
     }
     const surahRoute = url.pathname.match(/^\/api\/quran\/surah\/(\d+)$/);
     if (surahRoute && req.method === 'GET') {

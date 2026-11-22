@@ -1361,6 +1361,11 @@ input[type='color']:disabled {
   font-size: 0.875rem;
 }
 
+/* A juz's range: each end in one piece */
+.surah-list .place {
+  white-space: nowrap;
+}
+
 @container (max-width: 18rem) {
   .surah-list button {
     grid-template-columns: 2.25rem minmax(0, 1fr);
